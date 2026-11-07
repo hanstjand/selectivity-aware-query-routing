@@ -1,0 +1,104 @@
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Dataset and Query Workload}
+We use the \code{laion-small-clip} collection of Qdrant's public filtered-ANN benchmark~\cite{qdrant-datasets}:
+100{,}000 CLIP~\cite{radford2021clip} image embeddings sampled from LAION-400M~\cite{schuhmann2021laion}, with 512
+dimensions and approximately unit norm. They are distributed as float16; we store them losslessly as float32, use
+cosine distance, and keep the original row index as identifier. The filter attribute is the payload field
+\code{similarity}, the CLIP image--text score of each sample, with 97{,}798 distinct values in $[0.295,0.501]$. 152
+rows carry an imputed value of 0.0 and are never placed inside a filter range. Other payload fields are constant or
+heavily tied.
+
+The benchmark's own test filters cover only about 3\%--99.5\% selectivity, so we construct new ones. From its
+4{,}985 distinct test query vectors (all outside the base set) we sample 300 with a fixed seed.
+For each vector and each target selectivity $\sel\in\{0.1,0.5,1,2,5,10,25,50,90\}\%$, a closed range covering
+$m=\mathrm{round}(\sel N)$ consecutive values of the sorted attribute is placed at a seeded random offset. This gives
+$300\times9=2{,}700$ configurations with $k=10$. Boundary ties make $|E|$ exceed $m$ by at most three rows, and we
+report against the actual counts. Exact ground truth is computed in NumPy with Eq.~\eqref{eq:cos} in float64. As a
+check of the identifier mapping, vector loading and distance function, we reproduce the benchmark's own exact neighbor
+lists for the 300 vectors under their \emph{original} conditions. Of these, 297 match exactly; the other three differ
+only between duplicate images at identical distances, which the benchmark orders differently.
+
+\subsection{Database and Index Configuration}
+Table~\ref{tab:config} lists the configuration. The table \code{items(id, similarity, embedding vector(512))} is loaded
+with binary \code{COPY} and stores vectors inline (\code{SET STORAGE PLAIN}). Otherwise a 2.1\,KB row would be moved
+to TOAST storage, whose access cost the planner does not model~\cite{pgvector}. We build a B-tree on \code{similarity}
+and an HNSW index with pgvector's default construction parameters, then run \code{VACUUM (FREEZE, ANALYZE)} once with
+the default statistics target of 100. Autovacuum is disabled on the table. Server settings are defaults except memory
+sizing and \code{jit=off}; the planner cost constants are untouched, so B3 reflects the default planner. Server-side
+prepared statements are disabled, so every query is planned with its actual range bounds.
+
+The HNSW query configuration was fixed before any measurement and is shared by every HNSW-using method:
+\code{ef\_search=100}, with the default scan limits. A pre-registered guard would have raised \code{ef\_search} to 200
+if B2-iter missed a mean Recall@10 of 0.95 at the broadest level on the calibration split. It reached 0.996, so the
+guard did not trigger. A sensitivity check on the calibration split is reported but was never used to choose $T$.
+
+Intended execution is verified as follows. Each session reads its settings back before every phase. A plain
+\code{EXPLAIN} of \emph{every} configuration--method pair (19{,}980 plans) confirmed that B1 never uses HNSW and every
+B2 plan is an HNSW scan. Because plans are custom, statistics frozen, and SQL and settings identical, these plans are
+the executed ones. \code{EXPLAIN (ANALYZE, BUFFERS)} was additionally run on a stratified sample of 450 executions.
+$a+0.0=a$ holds for all stored values, SQL and NumPy counts agree for all filters, pgvector and NumPy distances differ
+by at most $4.5\times10^{-7}$, and B1 returns the exact ground truth except for two numerical near-ties.
+
+\begin{table}[t]
+\caption{Experimental configuration}
+\label{tab:config}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{6.35cm}@{}}
+\toprule
+Item & Setting\\
+\midrule
+Data & 100{,}000 LAION/CLIP vectors, $d=512$, cosine; range filter on \code{similarity}\\
+Workload & 300 query vectors $\times$ 9 selectivities = 2{,}700 configurations; $k=10$\\
+Split & 210 calibration / 90 held-out vectors (1{,}890 / 810 configurations)\\
+DBMS & PostgreSQL 17.11 + pgvector 0.8.7 (\code{pgvector/pgvector:0.8.7-pg17})\\
+Indexes & B-tree on \code{similarity}; HNSW, $m=16$, \code{ef\_construction=64} (built in 10.4\,s)\\
+Sizes & heap 260\,MiB (TOAST 0), HNSW 260\,MiB, B-tree 2.2\,MiB\\
+HNSW query & \code{ef\_search=100}, \code{max\_scan\_tuples=20000}, iterative mode \code{relaxed\_order}\\
+Server & \code{shared\_buffers}=2\,GB, \code{work\_mem}=4\,MB, \code{jit}=off, 2 workers per gather\\
+Host & Apple M4 (10 cores, 16\,GB), macOS 27.0.1; Docker 29.2.1 VM, 10 vCPUs, 7.65\,GiB\\
+Client & Python 3.12, psycopg 3.3.8; one persistent session per method\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Benchmark Environment and Protocol}
+All measurements use one machine and a single client issuing queries sequentially. PostgreSQL runs in Docker on macOS
+and the client on the host. We distinguish two notions of ``warm''. The \emph{warm-cache condition} means all pages are
+memory resident: heap and indexes (about 0.55\,GB) fit in the 2\,GB buffer pool, are loaded with \code{pg\_prewarm}
+before each phase, and the sampled \code{EXPLAIN (ANALYZE, BUFFERS)} runs read no blocks from outside it. The
+\emph{warm-up pass} is one full, untimed execution of every configuration--method pair, which removes first-execution
+effects. Five timed passes follow, each over all pairs in a fresh seeded random permutation, so methods are
+interleaved and drift affects them equally. The calibration phase (1{,}890 configurations, 8 variants, 75{,}600 timed
+executions) took 8.4\,min, and the held-out phase (810 configurations, 6 methods, 24{,}300 executions) took 1.7\,min,
+with no failed execution. Latency is measured in the client from submission to the last fetched row. It is
+end-to-end and includes a 0.16--0.18\,ms round trip (median \code{SELECT 1}) and, for P1, the routing overhead.
+
+\subsection{Evaluation Metrics}
+\label{sec:metrics}
+The latency $\lambda_m(c)$ of method $m$ on configuration $c$ is the median of the five timed runs. We report the
+p50, p95 and mean of $\lambda_m(c)$ over configurations, so every selectivity level weighs equally. The primary
+quality metric is \emph{strict} Recall@10, the identifier overlap with the exact answer,
+\begin{equation}
+r_m(c)=|R_m(c)\cap G_k(c)|\,/\,\min(k,|E(c)|).
+\label{eq:recall}
+\end{equation}
+$|E|=0$ never occurs here. A tie-tolerant variant, which also accepts a returned eligible row within $10^{-6}$ of the
+$k$-th exact distance, is used only to diagnose numerical ties. A query is \emph{complete} if
+$\kappa_m(c)=\mathbf{1}[\,|R_m(c)|=\min(k,|E(c)|)\,]$. The quality targets are a mean Recall@10 $\ge0.95$ and a mean
+completeness $\ge0.99$. The estimation error is $(\Mhat-|E|)/|E|$.
+
+The \emph{Oracle} is a hindsight reference: for every configuration it takes the faster of P1's two arms,
+$\lambda_O(c)=\min(\lambda_{\mathrm{B1}}(c),\lambda_{\mathrm{B2iter}}(c))$, without overhead and \emph{without} a
+quality requirement. It is an optimistic latency floor, not a deployable method, and its p50, p95 and mean bound those
+of any router over the same arms from below. For one statistic $S$ on one set of configurations, P1's gain captured is
+\begin{equation}
+\Gamma_S=\bigl(S(\text{best})-S(\text{P1})\bigr)\,/\,\bigl(S(\text{best})-S(\text{Oracle})\bigr),
+\label{eq:gain}
+\end{equation}
+where ``best'' is the fastest of B1, B2-plain, B2-iter and B3 on $S$ among those meeting both quality targets on the
+same set. 95\% confidence intervals come from a cluster bootstrap over query vectors (2{,}000 resamples), which keeps a
+vector's nine configurations together and pairs methods by configuration.

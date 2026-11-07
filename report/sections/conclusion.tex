@@ -1,0 +1,18 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We evaluated whether a simple selectivity-aware routing rule can improve filtered vector search in PostgreSQL while
+satisfying retrieval-quality constraints. The router estimates matching rows from PostgreSQL's cached histogram
+statistics and chooses exact search below a calibrated threshold and iterative HNSW above it. On 2{,}700 range-filtered
+queries over 100{,}000 LAION/CLIP vectors, the two strategies have opposite cost trends that cross between 2\% and 5\%
+selectivity (RQ1). Calibrated on 70\% of the query vectors and evaluated once on the rest, the router achieved a mean
+strict Recall@10 of 0.991 with complete results, a median latency of 1.33\,ms and a p95 of 3.30\,ms. The best fixed
+strategies meeting the same targets reach 2.72\,ms and 16.34\,ms, and the router captures about 99\% of the headroom
+identified by a hindsight oracle (RQ2). PostgreSQL's default plan choice was faster but incomplete for 27\% of queries,
+and adding iterative scanning alone left a 64\% higher tail latency than routing. The router is not the fastest method
+at any individual level; it pays a microsecond-scale overhead at the most selective levels and a tail penalty near the
+crossover, where the better strategy depends on the query rather than on its row count (RQ3). These findings hold for
+one dataset, one attribute and one warm-cache, single-client environment. Future work should cover multi-attribute
+and categorical predicates, larger collections, concurrent and cold-cache workloads, estimators aware of correlation
+between filters and vector neighborhoods, and a planner cost model for iterative index scans that accounts for result
+completeness.

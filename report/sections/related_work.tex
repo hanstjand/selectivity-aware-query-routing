@@ -1,0 +1,34 @@
+\section{Related Work}
+\label{sec:related}
+
+\textbf{ANN search and HNSW.} ANN indexes trade a little recall for large gains in speed and are evaluated by
+recall against exact neighbors together with latency~\cite{aumuller2020annbench}. HNSW~\cite{malkov2020hnsw}
+answers a query by greedy best-first traversal of a hierarchy of proximity graphs with a bounded candidate list, whose
+size (\code{ef\_search}) controls the speed--recall trade-off. A predicate applied after traversal may leave few
+qualifying candidates.
+
+\textbf{Filtered ANN search.} Li et al.~\cite{li2025attribute} classify filtered-ANN methods into pre-, post- and
+joint filtering and evaluate them at selectivities from 0.1\% to 100\%. The best method depends on selectivity and on
+the index family. Filtered-DiskANN~\cite{gollapudi2023filtered} builds label-aware proximity graphs, and
+ACORN~\cite{patel2024acorn} supports arbitrary predicates by traversing the predicate-induced subgraph of a denser
+HNSW-style graph. Both change the index; we instead choose per query between the indexes PostgreSQL already provides.
+
+\textbf{Vector search in database systems.} Milvus~\cite{wang2021milvus} implements several attribute-filtering
+strategies and selects among them with a cost model. AnalyticDB-V~\cite{wei2020analyticdbv} processes hybrid queries
+with an accuracy-aware cost-based optimizer. VBase~\cite{zhang2023vbase} formalizes the \emph{relaxed monotonicity} of
+vector index traversal, so index scans can be pipelined with relational operators and continued until enough
+qualifying tuples are produced. pgvector exposes a related mechanism, iterative index scans, without an
+accuracy-aware optimizer~\cite{pgvector}. Amanbayev et al.~\cite{amanbayev2026filtered} compare filtering in FAISS,
+Milvus and pgvector and observe that pgvector's planner sometimes prefers approximate scans where exact scans would
+give perfect recall at similar latency.
+
+\textbf{Selectivity estimation.} Cost-based plan selection from estimated selectivities dates back to
+System~R~\cite{selinger1979access}, and histograms remain the standard synopsis for range
+predicates~\cite{poosala1996improved}. PostgreSQL keeps equi-depth histogram bounds and most-common-value (MCV) lists in
+\code{pg\_stats}~\cite{pgdocs-stats,pgdocs-rowest}. Cardinality misestimation is a major source of poor
+plans~\cite{leis2015good}, so the accuracy of the estimate matters for any rule built on it.
+
+\textbf{Gap.} Selectivity-dependent behavior of filtered vector search is well documented, and selectivity-aware
+execution is not new. Missing is an evaluation of how far a \emph{single calibrated cardinality threshold}, built only
+from existing statistics and indexes, gets relative to fixed strategies and PostgreSQL's own planner, under explicit
+recall and completeness constraints and with held-out testing.
