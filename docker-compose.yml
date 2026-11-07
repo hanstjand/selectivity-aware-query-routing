@@ -1,0 +1,38 @@
+# PostgreSQL 17 + pgvector 0.8.7 for the filtered-vector-search routing study.
+# Server settings are PostgreSQL defaults except the ones below (see docs/METHODOLOGY.md):
+#   shared_buffers=2GB            keep the ~0.6 GB working set (heap + B-tree + HNSW) in memory
+#   maintenance_work_mem=1GB      HNSW build fits in memory (build time only)
+#   max_parallel_maintenance_workers=4   parallel HNSW build (build time only)
+#   jit=off                       remove JIT compilation noise (applies to every method)
+# Planner cost constants are left at their defaults so that B3 reflects the default planner.
+services:
+  db:
+    image: pgvector/pgvector:0.8.7-pg17-bookworm
+    container_name: fvs-postgres
+    environment:
+      POSTGRES_USER: fvs
+      POSTGRES_PASSWORD: fvs
+      POSTGRES_DB: fvs
+    ports:
+      - "127.0.0.1:55432:5432"
+    shm_size: 2gb   # pgvector README: shm must be >= maintenance_work_mem for parallel HNSW builds
+    command:
+      - postgres
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - max_parallel_maintenance_workers=4
+      - -c
+      - jit=off
+    volumes:
+      - fvs_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fvs -d fvs"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+volumes:
+  fvs_pgdata:

@@ -1,0 +1,72 @@
+{
+ "phase": "calibration",
+ "started_at": "2026-11-07T18:18:40+0800",
+ "n_configs": 1890,
+ "methods": [
+  "B1",
+  "B2-plain",
+  "B2-iter",
+  "B3",
+  "B2-iter-ef40",
+  "B2-iter-ef200",
+  "B2-strict",
+  "B2-iter-mst100k"
+ ],
+ "stats_fingerprint_start": "86a1c3adf56d4cfc1ab44979dd0bfe915cc9497a086e4838508e9e68d0b82b41",
+ "prewarm_blocks": {
+  "items": 33344,
+  "items_similarity_btree": 276,
+  "items_embedding_hnsw": 33283,
+  "items_pkey": 276
+ },
+ "rtt_select1": {
+  "n": 300,
+  "p50_ms": 0.15989599999999998,
+  "p95_ms": 0.18504310000000002,
+  "mean_ms": 0.17281874666666666
+ },
+ "plan_audit_s": 4.8111701011657715,
+ "plan_audit": {
+  "n": 15120,
+  "n_failed": 0
+ },
+ "explain_analyze_s": 1.0974411964416504,
+ "explain_analyze_n": 180,
+ "pass_durations_s": [
+  {
+   "pass": 0,
+   "timed": false,
+   "seconds": 85.7032220363617
+  },
+  {
+   "pass": 1,
+   "timed": true,
+   "seconds": 82.89243221282959
+  },
+  {
+   "pass": 2,
+   "timed": true,
+   "seconds": 84.66724681854248
+  },
+  {
+   "pass": 3,
+   "timed": true,
+   "seconds": 82.00362420082092
+  },
+  {
+   "pass": 4,
+   "timed": true,
+   "seconds": 82.52190899848938
+  },
+  {
+   "pass": 5,
+   "timed": true,
+   "seconds": 81.84610605239868
+  }
+ ],
+ "stats_fingerprint_end": "86a1c3adf56d4cfc1ab44979dd0bfe915cc9497a086e4838508e9e68d0b82b41",
+ "n_executions": 75600,
+ "n_errors": 0,
+ "finished_at": "2026-11-07T18:27:06+0800",
+ "wall_clock_s": 506.0918617248535
+}

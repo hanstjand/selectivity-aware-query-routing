@@ -1,0 +1,120 @@
+{
+ "version": "PostgreSQL 17.11 (Debian 17.11-1.pgdg12+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+ "pgvector_version": "0.8.7",
+ "key_settings": {
+  "server_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+  "shared_buffers": "2GB",
+  "work_mem": "4MB",
+  "maintenance_work_mem": "1GB",
+  "effective_cache_size": "4GB",
+  "random_page_cost": "4",
+  "seq_page_cost": "1",
+  "cpu_tuple_cost": "0.01",
+  "cpu_operator_cost": "0.0025",
+  "jit": "off",
+  "max_parallel_workers_per_gather": "2",
+  "max_parallel_workers": "8",
+  "max_parallel_maintenance_workers": "4",
+  "default_statistics_target": "100",
+  "plan_cache_mode": "auto",
+  "enable_seqscan": "on",
+  "enable_indexscan": "on",
+  "enable_bitmapscan": "on",
+  "hnsw.ef_search": "40",
+  "hnsw.iterative_scan": "off",
+  "hnsw.max_scan_tuples": "20000",
+  "hnsw.scan_mem_multiplier": "1"
+ },
+ "non_default_settings": {
+  "DateStyle": {
+   "setting": "ISO, MDY",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "default_text_search_config": {
+   "setting": "pg_catalog.english",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "dynamic_shared_memory_type": {
+   "setting": "posix",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "jit": {
+   "setting": "off",
+   "unit": null,
+   "source": "command line"
+  },
+  "lc_messages": {
+   "setting": "en_US.utf8",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "lc_monetary": {
+   "setting": "en_US.utf8",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "lc_numeric": {
+   "setting": "en_US.utf8",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "lc_time": {
+   "setting": "en_US.utf8",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "listen_addresses": {
+   "setting": "*",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "log_timezone": {
+   "setting": "Etc/UTC",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "maintenance_work_mem": {
+   "setting": "1048576",
+   "unit": "kB",
+   "source": "command line"
+  },
+  "max_connections": {
+   "setting": "100",
+   "unit": null,
+   "source": "configuration file"
+  },
+  "max_parallel_maintenance_workers": {
+   "setting": "4",
+   "unit": null,
+   "source": "command line"
+  },
+  "max_wal_size": {
+   "setting": "1024",
+   "unit": "MB",
+   "source": "configuration file"
+  },
+  "min_wal_size": {
+   "setting": "80",
+   "unit": "MB",
+   "source": "configuration file"
+  },
+  "shared_buffers": {
+   "setting": "262144",
+   "unit": "8kB",
+   "source": "command line"
+  },
+  "statement_timeout": {
+   "setting": "60000",
+   "unit": "ms",
+   "source": "session"
+  },
+  "TimeZone": {
+   "setting": "Etc/UTC",
+   "unit": null,
+   "source": "configuration file"
+  }
+ }
+}

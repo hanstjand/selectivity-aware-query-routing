@@ -1,0 +1,24 @@
+{
+ "load_s": 1.484764749999158,
+ "btree_build_s": 0.039269792032428086,
+ "hnsw_build_s": 10.410628915997222,
+ "vacuum_analyze_s": 0.17888737504836172,
+ "sizes": {
+  "heap_bytes": 273154048,
+  "toast_bytes": 0,
+  "btree_bytes": 2260992,
+  "hnsw_bytes": 272654336,
+  "pkey_bytes": 2260992,
+  "relpages": 33344,
+  "reltuples": 99996.0
+ },
+ "prewarm_blocks": {
+  "items": 33344,
+  "items_similarity_btree": 276,
+  "items_embedding_hnsw": 33283,
+  "items_pkey": 276
+ },
+ "stats_fingerprint": "86a1c3adf56d4cfc1ab44979dd0bfe915cc9497a086e4838508e9e68d0b82b41",
+ "rows": 100000,
+ "stats_snapshot_sha256": "a37cba30cbfbf67b512b59b7da5009977abbba7beafb1c73d6cbdc83452e58d4"
+}

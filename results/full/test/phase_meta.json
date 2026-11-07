@@ -1,0 +1,70 @@
+{
+ "phase": "test",
+ "started_at": "2026-11-07T18:27:54+0800",
+ "n_configs": 810,
+ "methods": [
+  "B1",
+  "B2-plain",
+  "B2-iter",
+  "B3",
+  "B3+iter",
+  "P1"
+ ],
+ "stats_fingerprint_start": "86a1c3adf56d4cfc1ab44979dd0bfe915cc9497a086e4838508e9e68d0b82b41",
+ "prewarm_blocks": {
+  "items": 33344,
+  "items_similarity_btree": 276,
+  "items_embedding_hnsw": 33283,
+  "items_pkey": 276
+ },
+ "rtt_select1": {
+  "n": 300,
+  "p50_ms": 0.1838755,
+  "p95_ms": 0.20715445000000002,
+  "mean_ms": 0.19956318
+ },
+ "plan_audit_s": 1.6260442733764648,
+ "plan_audit": {
+  "n": 4860,
+  "n_failed": 0
+ },
+ "explain_analyze_s": 1.3704659938812256,
+ "explain_analyze_n": 270,
+ "pass_durations_s": [
+  {
+   "pass": 0,
+   "timed": false,
+   "seconds": 16.635374784469604
+  },
+  {
+   "pass": 1,
+   "timed": true,
+   "seconds": 16.10433292388916
+  },
+  {
+   "pass": 2,
+   "timed": true,
+   "seconds": 16.098626136779785
+  },
+  {
+   "pass": 3,
+   "timed": true,
+   "seconds": 16.22467279434204
+  },
+  {
+   "pass": 4,
+   "timed": true,
+   "seconds": 16.38663101196289
+  },
+  {
+   "pass": 5,
+   "timed": true,
+   "seconds": 16.17130208015442
+  }
+ ],
+ "stats_fingerprint_end": "86a1c3adf56d4cfc1ab44979dd0bfe915cc9497a086e4838508e9e68d0b82b41",
+ "n_executions": 24300,
+ "n_errors": 0,
+ "finished_at": "2026-11-07T18:29:35+0800",
+ "wall_clock_s": 101.02418684959412
+}

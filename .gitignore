@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Data: downloaded and derived (reproducible via `fvs download` / `fvs prepare`)
+data/
+# Raw benchmark measurements are large; summaries (tables, figures, report) are kept
+results/*/calibration/raw.parquet
+results/*/test/raw.parquet
+results/*/*/plans.parquet
+results/smoke/
+results/pytest-*/
+.DS_Store

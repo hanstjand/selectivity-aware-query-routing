@@ -1,0 +1,60 @@
+# Smoke test: whole pipeline on a 5,000-row prefix of the real dataset, 20 query vectors, all 9 levels.
+# At 5,000 rows the 0.1% level has 5 eligible rows, exercising the |E| < k code paths.
+run_id: smoke
+seed: 20261107
+
+dataset:
+  url: https://storage.googleapis.com/ann-filtered-benchmark/datasets/laion-small-clip.tgz
+  sha256: 6c88614ea225b0ebc959e2da7b345452381d927560c864ece45377e9ceb7d12c
+  name: laion-small-clip
+  n_rows: 5000
+  dim: 512
+  filter_field: similarity
+  imputed_value: 0.0
+
+workload:
+  n_queries: 20
+  selectivities: [0.001, 0.005, 0.01, 0.02, 0.05, 0.10, 0.25, 0.50, 0.90]
+  k: 10
+  calibration_fraction: 0.7
+  gt_gate_min_overlap: 0.99
+
+database:
+  host: 127.0.0.1
+  port: 55432
+  user: fvs
+  password: fvs
+  dbname: fvs_smoke
+  table: items
+  statement_timeout_ms: 60000
+
+hnsw:
+  m: 16
+  ef_construction: 64
+  ef_search: 100
+  max_scan_tuples: 20000
+  scan_mem_multiplier: 1
+  guard_ef_search: 200
+  guard_min_recall: 0.95
+
+sensitivity:
+  - {name: B2-iter-ef40, ef_search: 40}
+  - {name: B2-iter-ef200, ef_search: 200}
+  - {name: B2-strict, iterative_scan: strict_order}
+  - {name: B2-iter-mst100k, max_scan_tuples: 100000}
+
+benchmark:
+  warmup_passes: 1
+  repetitions: 2
+  analyze_sample_per_level: 1
+
+calibration:
+  min_mean_recall: 0.95
+  min_completeness: 0.99
+
+evaluation:
+  bootstrap_resamples: 200
+
+paths:
+  data_dir: data
+  results_dir: results

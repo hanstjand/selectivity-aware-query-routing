@@ -1,0 +1,60 @@
+# Primary experiment: 100K LAION/CLIP vectors, 300 query vectors x 9 selectivities = 2,700 configs.
+run_id: full
+seed: 20261107
+
+dataset:
+  url: https://storage.googleapis.com/ann-filtered-benchmark/datasets/laion-small-clip.tgz
+  sha256: 6c88614ea225b0ebc959e2da7b345452381d927560c864ece45377e9ceb7d12c
+  name: laion-small-clip
+  n_rows: 100000          # first n rows of vectors.npy / payloads.jsonl
+  dim: 512
+  filter_field: similarity
+  imputed_value: 0.0      # Qdrant's generator ran df.fillna(0): these rows never fall inside a filter window
+
+workload:
+  n_queries: 300
+  selectivities: [0.001, 0.005, 0.01, 0.02, 0.05, 0.10, 0.25, 0.50, 0.90]
+  k: 10
+  calibration_fraction: 0.7
+  gt_gate_min_overlap: 0.99   # reproduce Qdrant's closest_ids under the original conditions
+
+database:
+  host: 127.0.0.1
+  port: 55432
+  user: fvs
+  password: fvs
+  dbname: fvs
+  table: items
+  statement_timeout_ms: 60000
+
+hnsw:
+  m: 16                    # pgvector default
+  ef_construction: 64      # pgvector default
+  ef_search: 100           # primary, fixed a priori, shared by every method
+  max_scan_tuples: 20000   # pgvector default
+  scan_mem_multiplier: 1   # pgvector default
+  guard_ef_search: 200     # used only if the pre-registered guard triggers (calibration split)
+  guard_min_recall: 0.95   # guard: B2-iter mean strict Recall@10 at the broadest level
+
+# Calibration-split-only sensitivity check (reported, never used to choose T).
+sensitivity:
+  - {name: B2-iter-ef40, ef_search: 40}
+  - {name: B2-iter-ef200, ef_search: 200}
+  - {name: B2-strict, iterative_scan: strict_order}
+  - {name: B2-iter-mst100k, max_scan_tuples: 100000}
+
+benchmark:
+  warmup_passes: 1
+  repetitions: 5
+  analyze_sample_per_level: 5
+
+calibration:
+  min_mean_recall: 0.95
+  min_completeness: 0.99
+
+evaluation:
+  bootstrap_resamples: 2000
+
+paths:
+  data_dir: data
+  results_dir: results
