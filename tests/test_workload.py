@@ -1,12 +1,12 @@
 import numpy as np
 
-from fvsroute import workload as wl
+from fvsroute import data as wl
 
 
 def test_select_queries_dedupes_and_is_deterministic():
     rng = np.random.default_rng(1)
     q = rng.normal(size=(50, 4)).astype(np.float32)
-    q[10] = q[3]          # duplicate vector
+    q[10] = q[3]  # duplicate vector
     a = wl.select_queries(q, 20, seed=7)
     b = wl.select_queries(q, 20, seed=7)
     assert np.array_equal(a, b)
@@ -68,6 +68,7 @@ def test_tiny_selectivity_has_at_least_one_row():
 
 def test_frame_sha_changes_with_content():
     import pandas as pd
+
     a = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
     b = a.copy()
     b.loc[1, "x"] = 3

@@ -1,0 +1,36 @@
+{
+  "source_run": "full-20261125-203931",
+  "mode": "new experiment",
+  "threshold_T": 4787.34817313293,
+  "frozen_router": {
+    "threshold_T": 4787.34817313293,
+    "hnsw": {
+      "m": 16,
+      "ef_construction": 64,
+      "ef_search": 100,
+      "max_scan_tuples": 20000,
+      "scan_mem_multiplier": 1
+    },
+    "constraints": {
+      "min_mean_recall": 0.95,
+      "min_completeness": 0.99
+    },
+    "calibration_at_T": {
+      "mean_ms": 2.652000423280423,
+      "p50_ms": 2.4280999999999997,
+      "p95_ms": 4.670025,
+      "recall": 0.9937037037037036,
+      "completeness": 1.0,
+      "frac_B1": 0.4534391534391534
+    },
+    "stats_snapshot_sha256": "6d82a3a272c5e978ec0f5e97c9309b5099f023253050995a2f7ad1619b5f2444",
+    "config_sha256": "4f530237018d65887b2da2a29ea7ea58c92184d77a1b59faef6a5c7486757a2a",
+    "routing_overhead_ns": {
+      "n": 37800,
+      "median_ns": 1400,
+      "p95_ns": 1400,
+      "mean_ns": 1412.3809523809523
+    },
+    "frozen_at": "2026-11-25T20:56:30+0800"
+  }
+}

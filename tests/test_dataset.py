@@ -6,8 +6,8 @@ import tarfile
 import numpy as np
 import pytest
 
-from fvsroute import dataset
-from fvsroute.dataset import DatasetError
+from fvsroute import data as dataset
+from fvsroute.data import DatasetError
 
 
 def _make_raw(tmp_path, n=20, d=8, n_tests=4, vec_dtype=np.float16, values=None, ids_shift=0, extra=None):
@@ -18,13 +18,20 @@ def _make_raw(tmp_path, n=20, d=8, n_tests=4, vec_dtype=np.float16, values=None,
     buf = io.BytesIO()
     np.save(buf, vecs)
     files["vectors.npy"] = buf.getvalue()
-    files["payloads.jsonl"] = "".join(json.dumps({"similarity": float(v), "caption": "x"}) + "\n"
-                                      for v in values).encode()
+    files["payloads.jsonl"] = "".join(
+        json.dumps({"similarity": float(v), "caption": "x"}) + "\n" for v in values
+    ).encode()
     tests = []
     for i in range(n_tests):
         cond = {"and": [{"similarity": {"range": {"gt": 0.35}}}]} if i % 2 else {}
-        tests.append({"query": rng.normal(size=d).astype(np.float16).astype(float).tolist(), "conditions": cond,
-                      "closest_ids": [int(j + ids_shift) for j in range(3)], "closest_scores": [0.9, 0.8, 0.7]})
+        tests.append(
+            {
+                "query": rng.normal(size=d).astype(np.float16).astype(float).tolist(),
+                "conditions": cond,
+                "closest_ids": [int(j + ids_shift) for j in range(3)],
+                "closest_scores": [0.9, 0.8, 0.7],
+            }
+        )
     files["tests.jsonl"] = "".join(json.dumps(t) + "\n" for t in tests).encode()
     if extra:
         files.update(extra)

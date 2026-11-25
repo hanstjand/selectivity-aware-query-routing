@@ -10,7 +10,13 @@ results/*/calibration/raw.parquet
 results/*/test/raw.parquet
 results/*/*/plans.parquet
 results/smoke/
+results/proposal-preview/
 results/pytest-*/
+# Local comparison copies, trial runs, logs, and test scratch files
+results/compare-*/
+results/trial-*/
+results/*/logs/
+results/*/pytest-*/
 .DS_Store
 # LaTeX build artifacts (report/main.pdf is kept)
 report/*.aux

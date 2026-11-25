@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from fvsroute import groundtruth as gt
+from fvsroute import data as gt
 
 
 def _naive_topk(base, values, q, lo, hi, k):
@@ -20,8 +20,16 @@ def _workload(values, qids, ranges):
     recs = []
     for q in qids:
         for li, (lo, hi) in enumerate(ranges):
-            recs.append({"config_id": f"q{q}_l{li}", "query_id": q, "level_idx": li, "lo": lo, "hi": hi,
-                         "n_eligible": int(((values >= lo) & (values <= hi)).sum())})
+            recs.append(
+                {
+                    "config_id": f"q{q}_l{li}",
+                    "query_id": q,
+                    "level_idx": li,
+                    "lo": lo,
+                    "hi": hi,
+                    "n_eligible": int(((values >= lo) & (values <= hi)).sum()),
+                }
+            )
     return pd.DataFrame(recs)
 
 
@@ -82,13 +90,13 @@ def test_benchmark_validation_detects_wrong_ids():
     ids, scores = [], []
     for i in range(6):
         cand = np.flatnonzero(values > cond[i]) if np.isfinite(cond[i]) else np.arange(200)
-        top, d, _ = gt.topk_among(gt.cosine_distances(bn, qs[i:i + 1])[0], cand, 5)
+        top, d, _ = gt.topk_among(gt.cosine_distances(bn, qs[i : i + 1])[0], cand, 5)
         ids.append(top)
         scores.append(1 - d)
     ids, scores = np.array(ids), np.array(scores)
     ok = gt.validate_against_benchmark(base, values, qs, cond, ids, scores)
     assert ok["mean_overlap"] == 1.0 and ok["max_abs_score_diff"] < 1e-9
     bad_ids = ids.copy()
-    bad_ids[:, 0] = (bad_ids[:, 0] + 1) % 200   # shifted id mapping
+    bad_ids[:, 0] = (bad_ids[:, 0] + 1) % 200  # shifted id mapping
     bad = gt.validate_against_benchmark(base, values, qs, cond, bad_ids, scores)
     assert bad["mean_overlap"] < 1.0

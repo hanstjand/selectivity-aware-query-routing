@@ -1,5 +1,8 @@
 # IEEE Conference Report
 
+This is the archived paper for the original `results/full/` experiment. The simplified proposal-only
+implementation generates its current report under `results/proposal/`; it does not rewrite this paper.
+
 `main.pdf` is the final report, *Selectivity-Aware Query Routing for Filtered Vector Search*. It is an 8-page IEEE
 conference paper (`IEEEtran`, conference mode) built from the measured results in `../results/full/`.
 

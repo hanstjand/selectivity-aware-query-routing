@@ -1,0 +1,47 @@
+{
+  "phase": "test",
+  "methods": [
+    "B1",
+    "B2-plain",
+    "B2-iter",
+    "B3",
+    "B4"
+  ],
+  "n_configs": 810,
+  "n_executions": 20250,
+  "n_errors": 0,
+  "wall_clock_s": 148.08332562446594,
+  "pass_durations_s": [
+    {
+      "pass": 0,
+      "timed": false,
+      "seconds": 24.5556640625
+    },
+    {
+      "pass": 1,
+      "timed": true,
+      "seconds": 23.83676052093506
+    },
+    {
+      "pass": 2,
+      "timed": true,
+      "seconds": 23.973233938217163
+    },
+    {
+      "pass": 3,
+      "timed": true,
+      "seconds": 23.85483980178833
+    },
+    {
+      "pass": 4,
+      "timed": true,
+      "seconds": 24.14533257484436
+    },
+    {
+      "pass": 5,
+      "timed": true,
+      "seconds": 23.995085954666138
+    }
+  ],
+  "plans_checked": 4050
+}
