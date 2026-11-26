@@ -94,7 +94,7 @@ The report contains the six method rows, success criteria, estimation errors, an
 HNSW settings are fixed in advance; no sensitivity sweep, automatic HNSW tuning, or bootstrap analysis
 is part of the method.
 
-The measurements in `results/full/` were taken on 25 November 2026 on a Windows 10 host with PostgreSQL
+The measurements in `results/full/` were taken on 25 November 2026 on a Windows 10 host (Intel Core i7-8700, 32 GB RAM) with PostgreSQL
 in Docker (`env/host_env.json`, `env/server_env.json`). Absolute timings depend on the host, cache
 state, and database build, so a rerun produces different timings and possibly a different threshold.
 The saved-result tests check that the committed measurements reproduce the frozen threshold, every

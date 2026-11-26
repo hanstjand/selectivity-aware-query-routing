@@ -37,7 +37,7 @@ Indexes & B-tree on \code{similarity}; HNSW, $m=16$, \code{ef\_construction=64} 
 Sizes & heap 260\,MiB (TOAST 0), HNSW 260\,MiB, B-tree 2.2\,MiB\\
 HNSW query & \code{ef\_search=100}, \code{max\_scan\_tuples=20000}, iterative mode \code{relaxed\_order}\\
 Server & \code{shared\_buffers}=2\,GB, \code{work\_mem}=4\,MB, \code{jit}=off, 2 workers per gather\\
-Host & x86-64 desktop, Windows 10 (build 19045); PostgreSQL in Docker\\
+Host & Intel Core i7-8700 (3.20\,GHz, 6 cores), 32\,GB RAM; Windows 10 (build 19045); PostgreSQL in Docker\\
 Client & Python 3.12, psycopg 3.3.8; one persistent session per method\\
 \bottomrule
 \end{tabular}
