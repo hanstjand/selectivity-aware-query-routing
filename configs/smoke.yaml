@@ -34,26 +34,14 @@ hnsw:
   ef_search: 100
   max_scan_tuples: 20000
   scan_mem_multiplier: 1
-  guard_ef_search: 200
-  guard_min_recall: 0.95
-
-sensitivity:
-  - {name: B2-iter-ef40, ef_search: 40}
-  - {name: B2-iter-ef200, ef_search: 200}
-  - {name: B2-strict, iterative_scan: strict_order}
-  - {name: B2-iter-mst100k, max_scan_tuples: 100000}
 
 benchmark:
   warmup_passes: 1
   repetitions: 2
-  analyze_sample_per_level: 1
 
 calibration:
   min_mean_recall: 0.95
   min_completeness: 0.99
-
-evaluation:
-  bootstrap_resamples: 200
 
 paths:
   data_dir: data

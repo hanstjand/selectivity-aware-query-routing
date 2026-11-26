@@ -1,175 +1,169 @@
-# Selectivity-Aware Query Routing for Filtered Vector Search
+# Selectivity-Aware Query Routing
 
-A reproducible PostgreSQL + pgvector study of a simple query router for filtered vector search. For
-`SELECT id FROM items WHERE similarity BETWEEN lo AND hi ORDER BY embedding <=> q LIMIT 10`, the router estimates
-the number of matching rows from PostgreSQL's own statistics (`pg_stats`) and sends the query to **exact search**
-(estimate ≤ T) or to **HNSW with iterative scan** (estimate > T). T is calibrated offline on 70% of the query
-vectors and evaluated once on the held-out 30%.
+A final-project implementation of Group 13's proposal: choose exact search or iterative HNSW for
+each filtered vector query in PostgreSQL. The router estimates matching rows from cached `pg_stats`:
 
-| Method | What runs |
+```python
+estimated_rows = estimate_rows(stats, lo, hi)
+method = "B1" if estimated_rows <= threshold else "B2-iter"
+```
+
+## Run
+
+Requirements: Docker Desktop running with at least 4 GB RAM, `uv`, and internet access for the first
+dataset download. Run these commands from this repository:
+
+```powershell
+uv sync
+docker compose up -d --wait
+
+# Small trial: 5,000 stored vectors, 20 query vectors
+uv run python main.py --config configs/smoke.yaml
+
+# Proposal experiment: 100,000 stored vectors, 300 query vectors
+uv run python main.py
+```
+
+The full run writes `results/proposal/report.md`, tables, and six figures, including the calibration
+curve in PNG and PDF formats. The smoke run writes
+`results/smoke/`. Fresh runs measure the current machine; timings and the calibrated threshold can vary.
+
+To show the required results from the historical experiment without running new queries:
+
+```powershell
+uv run python main.py report --from-run full --run-id proposal-preview
+```
+
+This reads the committed measurements in `results/full/` and writes a shorter report to
+`results/proposal-preview/report.md`. It does **not** perform a new benchmark. Required numerical
+results are preserved; the historical router name `P1` is displayed as `B4`, as in the proposal.
+The original measurements and paper under `results/full/` and `report/` remain historical artifacts.
+
+## Read the code
+
+There are seven implementation files under `src/fvsroute/`:
+
+| File | What to look for |
 |---|---|
-| **B1** Exact | metadata filter (B-tree bitmap or seq scan) + exact cosine sort; HNSW disabled (`enable_indexscan=off`) |
-| **B2-plain / B2-iter** | forced HNSW index scan, without / with `hnsw.iterative_scan = relaxed_order` |
-| **B3** Planner | the unmodified query: PostgreSQL's default planner decision under the shared HNSW configuration |
-| **P1** Router | `est_rows ≤ T → B1`, otherwise `B2-iter` (estimate from cached `pg_stats`, no COUNT(*)) |
-| **Oracle** | hindsight latency floor: faster of B1 / B2-iter per query, ignoring quality (evaluation reference only) |
+| `main.py` | Step order and command-line arguments |
+| `config.py` | YAML settings and paths |
+| `data.py` | Dataset reading, seeded filters, exact NumPy answers |
+| `prepare.py` | Load data, create indexes, verify correctness |
+| `search.py` | Baseline SQL, histogram estimator, B4 routing rule |
+| `benchmark.py` | Timing loop, metrics, calibration, Oracle |
+| `report.py` | Required tables and plots |
 
-Data: Qdrant's public LAION/CLIP filtered-ANN benchmark (100,000 × 512-d, cosine), 300 query vectors ×
-9 selectivities (0.1%–90%) = 2,700 filtered queries, k = 10, exact ground truth computed with NumPy.
-Definitions, design decisions and threats to validity are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md); the
-generated results are in `results/full/report.md`.
+The main path is `main.py → prepare.py → benchmark.py → report.py`.
+There is no session-pool framework or plugin system. Search methods use ordinary connections and cursors.
 
-## Requirements
+## Proposal scope
 
-- Docker with Compose (the database runs in a container; give Docker ≥ 4 GB RAM)
-- [uv](https://docs.astral.sh/uv/) (installs Python 3.12 and all dependencies)
-- ~1 GB free disk (120 MB archive, extracted data, database volume)
-- Internet access for the one-time dataset download
+- PostgreSQL + pgvector, 100K LAION/CLIP vectors, 512 dimensions, cosine distance, k = 10.
+- 300 query vectors × nine selectivities: 0.1%, 0.5%, 1%, 2%, 5%, 10%, 25%, 50%, 90%.
+- Split by query vector: 70% calibration, 30% held-out test.
+- B1 exact, B2 plain HNSW, B2 iterative HNSW, B3 PostgreSQL planner, B4 router, and hindsight Oracle.
+- Cached histogram estimates; no per-query `COUNT(*)` in the router.
+- One warm-up pass and five timed repetitions in randomized order for the full experiment.
+- Frozen threshold, EXPLAIN checks, logged software versions and query costs.
+- p50/p95 latency, Recall@10, completeness, row-estimate error, and Oracle gain, overall and per level.
+- Report negative results as well as successes.
 
-## Exact commands
+HNSW sensitivity variants, B3+iter, Oracle-V, bootstrap analysis, and automatic `ef_search` adjustment
+are not part of this implementation. HNSW settings are fixed in the YAML.
 
-```bash
-# 1. Environment
-uv sync                                   # creates .venv (Python 3.12, numpy, psycopg, pgvector, pandas, ...)
+B1 retains the original exact baseline: the planner may use a B-tree bitmap scan or a sequential scan,
+but cannot use HNSW. This preserves comparability with the historical experiment. See
+[methodology](docs/METHODOLOGY.md) for the details and the proposal's simplified B-tree description.
 
-# 2. PostgreSQL 17 + pgvector 0.8.7
-docker compose up -d                      # container fvs-postgres on 127.0.0.1:55432 (user/pass/db = fvs)
-docker compose ps                         # wait for "healthy"
+## Individual steps
 
-# 3. Download + validate the dataset (sha256-pinned)
-uv run fvs download  --config configs/full.yaml
+The existing `fvs` command also works:
 
-# 4. Queries, quantile filters, 70/30 split, exact NumPy ground truth (+ gate against Qdrant's own ids)
-uv run fvs prepare   --config configs/full.yaml
-
-# 5. Load table, build B-tree + HNSW indexes, VACUUM (FREEZE, ANALYZE), snapshot statistics
-uv run fvs db-setup  --config configs/full.yaml
-
-# 6. Verify: PG vs NumPy cosine, per-filter counts, predicate equivalence, B1 == ground truth, estimator vs planner
-uv run fvs verify    --config configs/full.yaml
-
-# 7. Baseline benchmark on the calibration split (B1, B2-plain, B2-iter, B3 + HNSW sensitivity variants)
-uv run fvs bench     --config configs/full.yaml --phase calibration
-
-# 8. Calibrate and freeze threshold T (calibration split only)
+```powershell
+uv run fvs download --config configs/full.yaml
+uv run fvs prepare --config configs/full.yaml
+uv run fvs db-setup --config configs/full.yaml
+uv run fvs verify --config configs/full.yaml
+uv run fvs bench --config configs/full.yaml --phase calibration
 uv run fvs calibrate --config configs/full.yaml
-
-# 9. Held-out evaluation, once (B1, B2-plain, B2-iter, B3, P1, supplementary B3+iter)
-uv run fvs bench     --config configs/full.yaml --phase test
-
-# 10. Figures, tables and report
-uv run fvs report    --config configs/full.yaml        # -> results/full/{report.md, figures/, tables/}
+uv run fvs bench --config configs/full.yaml --phase test
+uv run fvs report --config configs/full.yaml
 ```
 
-`uv run fvs all --config configs/full.yaml` runs steps 3–10 in order. Every step reads its inputs from disk, so
-any step can be re-run on its own. Use `--run-id <name>` to write a separate rerun to `results/<name>/` (for
-example to measure run-to-run variance).
+`uv run fvs all --config configs/full.yaml` runs all of them. A completed benchmark phase is not
+overwritten. For another experiment, use the same new `--run-id <name>` for every step, or pass it to
+`all`. A run ID separates output files; `db-setup` still recreates the configured database table.
+Do not run multiple experiments or tests while timing queries.
 
-### Smoke test and automated tests
+### Run it again in Windows PowerShell
 
-```bash
-uv run pytest -m "not db"                             # unit tests (no database needed)
-uv run fvs all --config configs/smoke.yaml            # whole pipeline on a 5,000-row prefix, 20 queries
-uv run pytest -m db                                   # integration + end-to-end tests (needs Docker + data)
+Open Docker Desktop and wait until its engine is running. Open PowerShell in this repository, then
+prepare the environment and choose a fresh output name:
+
+```powershell
+uv sync
+docker compose up -d --wait
+docker compose ps
+$runId = "full-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
 
-The smoke configuration uses its own database (`fvs_smoke`) and results directory (`results/smoke/`). The
-end-to-end test runs the complete pipeline in a temporary results directory and database (`fvs_pytest`).
+Run each command below in order. Wait for a command to finish successfully before starting the next.
+Keep the same PowerShell window so `$runId` stays the same for all eight steps:
 
-> Do not run tests or other heavy work while `fvs bench` is timing queries: it shares the machine with the
-> measurement.
-
-## What each step produces
-
-| Step | Output | Content |
-|---|---|---|
-| download | `data/raw/laion-small-clip/` | `vectors.npy`, `payloads.jsonl`, `tests.jsonl` (sha256-checked archive) |
-| prepare | `data/processed/<run>/` | `workload.parquet` (2,700 filters with actual selectivity and split), `groundtruth.parquet`, `queries.npy`, `manifest.json` (validation report, per-level selectivity), `gt_vs_qdrant.json` (gate) |
-| db-setup | `results/<run>/env/` | `db_setup.json` (load/index times, relation sizes), `stats_snapshot.json` (cached `pg_stats` for P1), `server_env.json`, `host_env.json` |
-| verify | `results/<run>/verify/` | `consistency.json` (all checks), `estimation.parquet` (ours vs planner vs actual rows), `b1_vs_gt.parquet` |
-| bench | `results/<run>/<phase>/` | `raw.parquet` (every timed execution with returned ids), `plans.parquet` (EXPLAIN of every config × method), `explain_analyze/` (sampled EXPLAIN ANALYZE BUFFERS JSON), `settings_audit.json`, `phase_meta.json` (durations, RTT, errors) |
-| calibrate | `results/<run>/calibration/` | `frozen_router.json` (T*, HNSW config, guard decision, hashes), `threshold_curve.parquet` |
-| report | `results/<run>/` | `report.md`, `figures/*.png|pdf`, `tables/*.csv` |
-
-## Repository layout
-
-```
-configs/            full.yaml (primary experiment), smoke.yaml
-docker-compose.yml  PostgreSQL 17 + pgvector 0.8.7 (settings documented inline)
-sql/                schema and index DDL
-src/fvsroute/       dataset, workload, groundtruth, db, strategies, plans, estimator, router,
-                    metrics, runner, calibrate, oracle, report, pipeline, cli
-tests/              unit tests, DB integration tests, end-to-end smoke test
-docs/METHODOLOGY.md definitions, decisions, ambiguity resolutions, threats to validity
+```powershell
+# 1. Download the real dataset, or verify the cached archive's checksum
+uv run python main.py download --config configs/full.yaml --run-id $runId
+# 2. Generate filters, split queries, and compute exact reference answers
+uv run python main.py prepare --config configs/full.yaml --run-id $runId
+# 3. Load 100,000 vectors and build the B-tree and HNSW indexes
+uv run python main.py db-setup --config configs/full.yaml --run-id $runId
+# 4. Check stored data, distances, filters, and exact search
+uv run python main.py verify --config configs/full.yaml --run-id $runId
+# 5. Measure the four baselines on the calibration split
+uv run python main.py bench --config configs/full.yaml --run-id $runId --phase calibration
+# 6. Choose and freeze the routing threshold using calibration data only
+uv run python main.py calibrate --config configs/full.yaml --run-id $runId
+# 7. Measure the baselines and B4 on the held-out test split
+uv run python main.py bench --config configs/full.yaml --run-id $runId --phase test
+# 8. Generate the report, tables, and figures from those fresh measurements
+uv run python main.py report --config configs/full.yaml --run-id $runId
 ```
 
-## Results (run `full`, measured 2026-11-07)
+To run all eight steps automatically, choose a new `$runId` and use:
 
-Full generated report: `results/full/report.md` (all tables in `results/full/tables/`, figures in
-`results/full/figures/`). Environment: Apple M4 (10 cores, 16 GB), Docker 29.2, PostgreSQL 17.11, pgvector 0.8.7.
-Latency is client-side end-to-end, including a ~0.16–0.18 ms `SELECT 1` round trip.
+```powershell
+uv run python main.py --config configs/full.yaml --run-id $runId
+```
 
-**Held-out test split** (90 query vectors × 9 levels = 810 configs; per-config median of 5 timed runs; Recall@10
-is strict ID overlap):
+For a small trial, use `configs/smoke.yaml` in the automatic command and a new output name, for example
+`--run-id "smoke-$(Get-Date -Format 'yyyyMMdd-HHmmss')"`. Smoke timings do not validate the 100K experiment.
 
-| Method | p50 (ms) | p95 (ms) | mean (ms) | Recall@10 | Complete | Meets quality? |
-|---|---|---|---|---|---|---|
-| B1 Exact | 4.159 | 16.344 | 6.688 | 1.000 | 100.0% | yes |
-| B2-plain | 1.414 | 1.901 | 1.411 | 0.510 | 39.6% | no |
-| B2-iter | 2.716 | 25.758 | 7.049 | 0.968 | 99.5% | yes |
-| B3 Planner | 1.233 | 1.818 | 1.204 | 0.828 | 73.0% | no |
-| **P1 Router** | **1.332** | **3.297** | **1.511** | **0.991** | **100.0%** | **yes** |
-| Oracle (latency floor, ignores quality) | 1.313 | 3.247 | 1.469 | 0.991 | 100.0% | n/a |
-| *B3+iter (supplementary)* | 1.359 | 5.415 | 1.873 | 0.989 | 100.0% | yes |
+Open `results/<your-run-id>/report.md`. In `tables/success_criteria.csv`, check `scope=overall` for
+quality, p50, and p95 PASS/FAIL results; then inspect each selectivity level for weaknesses.
+`tables/summary_test_overall.csv` has the six method rows, and `calibration/frozen_router.json` has
+the threshold. A new benchmark can have different timings and a different threshold from the paper.
 
-Pre-registered success criteria (all PASS overall):
-1. P1 quality: mean strict Recall@10 0.991 (≥ 0.95), 100% complete (≥ 99%).
-2. P1 p50 1.332 ms vs the best qualifying baseline B2-iter at 2.716 ms; P1 p95 3.297 ms vs the best qualifying
-   baseline B1 at 16.344 ms. The paired cluster-bootstrap CIs exclude 0 for both.
-3. Gain captured relative to the latency-floor Oracle: 98.7% (p50), 99.6% (p95), 99.2% (mean). P1's routing choice
-   agrees with the Oracle on 98.1% of configs.
+If a command fails, inspect `results/<your-run-id>/logs/` and resolve the reported error before
+continuing. A completed benchmark phase refuses to overwrite its measurements. Report generation
+can be repeated after the test phase finishes. Database setup recreates `items` in the configured
+database even when you choose a new run ID, so finish one experiment before starting another.
 
-Main findings:
-- **RQ1 (baselines vs selectivity).**
-  - **B1** is exact everywhere but grows from 0.41 ms at 0.1% to 13–16 ms at ≥ 25% selectivity. The planner uses a
-    non-parallel bitmap scan up to 25% and a parallel seq scan from 50%, which is why 25% is B1's slowest level.
-  - **B2-iter** is fast for broad filters (~1.4 ms) but slow and imperfect for selective ones: at 0.1% the p50 is
-    25.5 ms, recall 0.84, 95.6% complete.
-  - **B2-plain** returns too few rows below 25%: 0% complete at ≤ 2%.
-  - **B3** (PostgreSQL's default plan choice under the shared HNSW configuration) has the lowest raw latency but
-    switches to non-iterative HNSW from the 2% level up. Its results are incomplete there: 0% complete at 2%, 10% at
-    5%, 50% at 10%. Overall it fails the quality criterion.
-- **RQ2.** P1 meets the quality targets and beats every baseline that also meets them, by a wide margin, mainly by
-  avoiding B1 for broad filters and B2-iter for selective ones. Simply enabling iterative scan and trusting the
-  planner (B3+iter) also meets quality, but its p95 is 64% higher and its mean 24% higher than P1's.
-- **RQ3 (where P1 loses; negative results).** Against the best baseline *per level*, most differences are within
-  the bootstrap noise. Three are statistically distinguishable:
-  - **0.5% and 1% p50.** P1 runs the same exact plan as B1 at these levels plus about 9–10 µs of live routing
-    overhead, which makes it ~1.5% slower.
-  - **5% p95.** It is 5.58 ms vs B1's 4.31 ms. The calibration objective is nearly flat for T between 2,129 and 4,842
-    estimated rows, and the frozen T\* = 4,696 lies inside the 5% level's estimate range. The 5% filters that went to
-    B2-iter include its slow tail.
+## Tests
 
-  Under the strict pre-registered per-level rule (P1 ≤ the best qualifying baseline at that level), P1 passes
-  criterion 2 for both p50 and p95 at no level; it passes one of the two only at 1% (p95) and 10% (p50). Its overall
-  advantage comes from staying close to the best method at every level, while every fixed method is bad somewhere.
-- **Selectivity estimation.** The cached `pg_stats` estimator reproduces PostgreSQL's own planner estimate (median
-  relative difference 0.02%). Its error against the true counts is 11% at 0.1% (≈ 11 rows) and falls to 0.2% at 90%.
-  Only at the 5% level did estimates fall on both sides of T\*; at every other level all configs were routed to the same arm.
-- **HNSW sensitivity (calibration split, report-only).** ef_search 40 → 200 trades latency for recall at broad
-  filters: at 90%, p50 0.83 → 1.92 ms and recall 0.986 → 0.999. `max_scan_tuples = 100000` raises completeness at
-  0.1% from 96.7% to 98.6% at a higher latency. `strict_order` lowers recall slightly. Iterative scanning never
-  guaranteed complete results at 0.1%.
-- **Verification.**
-  - Qdrant's own exact ids are reproduced: 297/300 queries match exactly, and the rest differ only at exact-distance
-    ties.
-  - PostgreSQL and NumPy cosine distances differ by at most 4.5e-7.
-  - B1 equals the ground truth on all 2,700 configs, apart from 2 documented near-ties.
-  - Plan checks found 0 violations across 19,980 audited plans, and the sampled EXPLAIN ANALYZE runs read 0 blocks
-    from disk.
-  - There were 0 query errors.
+```powershell
+uv run pytest -m "not db"
 
-Limitations: one host, warm cache, sequential single client, one filter attribute, Docker on macOS. Absolute
-latencies are host-specific, and the crossover threshold depends on the HNSW parameters and the hardware. See
-[docs/METHODOLOGY.md §15](docs/METHODOLOGY.md).
-Measured runtime: index build 10.4 s; calibration benchmark 8.4 min; held-out benchmark 1.7 min.
+# After the smoke pipeline has completed:
+uv run pytest
+```
+
+Tests cover data integrity, ground truth, estimates, routing boundaries, SQL plans, calibration,
+retrieval metrics, pipeline order, and a real database smoke run. Saved-result tests reproduce the
+historical threshold, all 810 test routes, and required summary values. Tests for removed supplementary
+features have been removed with those features.
+
+To stop PostgreSQL:
+
+```powershell
+docker compose stop
+```

@@ -10,8 +10,10 @@ SMOKE = ROOT / "configs" / "smoke.yaml"
 
 def _db_reachable(cfg) -> bool:
     import psycopg
+    from fvsroute.config import connection_string
+
     try:
-        with psycopg.connect(cfg.database.conninfo("postgres"), connect_timeout=2):
+        with psycopg.connect(connection_string(cfg.database, "postgres"), connect_timeout=2):
             return True
     except Exception:  # noqa: BLE001
         return False
@@ -20,6 +22,7 @@ def _db_reachable(cfg) -> bool:
 @pytest.fixture(scope="session")
 def smoke_cfg():
     from fvsroute.config import load_config
+
     return load_config(SMOKE)
 
 

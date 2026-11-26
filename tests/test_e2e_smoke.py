@@ -22,19 +22,30 @@ def test_full_pipeline_smoke(tmp_path, smoke_cfg):
     cfg_path.parent.mkdir()
     cfg_path.write_text(yaml.safe_dump(d))
 
-    from fvsroute.cli import main
+    from fvsroute.main import main
+
     main(["all", "--config", str(cfg_path)])
 
     run = tmp_path / "results" / "pytest-e2e"
-    for rel in ("env/db_setup.json", "env/stats_snapshot.json", "verify/consistency.json",
-                "calibration/raw.parquet", "calibration/plans.parquet", "calibration/frozen_router.json",
-                "test/raw.parquet", "test/per_config.parquet", "report.md", "figures/latency_p50_vs_selectivity.png",
-                "tables/summary_test_overall.csv", "tables/success_criteria.csv"):
+    for rel in (
+        "env/db_setup.json",
+        "env/stats_snapshot.json",
+        "verify/consistency.json",
+        "calibration/raw.parquet",
+        "calibration/plans.parquet",
+        "calibration/frozen_router.json",
+        "test/raw.parquet",
+        "test/per_config.parquet",
+        "report.md",
+        "figures/latency_p50_vs_selectivity.png",
+        "tables/summary_test_overall.csv",
+        "tables/success_criteria.csv",
+    ):
         assert (run / rel).exists(), rel
     assert json.loads((run / "verify/consistency.json").read_text())["all_pass"]
     s = pd.read_csv(run / "tables/summary_test_overall.csv").set_index("method")
     assert s.loc["B1", "recall"] == 1.0 and s.loc["B1", "completeness"] == 1.0
-    assert {"B1", "B2-plain", "B2-iter", "B3", "P1", "Oracle", "B3+iter"} <= set(s.index)
+    assert {"B1", "B2-plain", "B2-iter", "B3", "B4", "Oracle"} <= set(s.index)
     # frozen threshold precedes the held-out measurements
     frozen = json.loads((run / "calibration/frozen_router.json").read_text())
     raw = pd.read_parquet(run / "test/raw.parquet", columns=["ts_ns"])
