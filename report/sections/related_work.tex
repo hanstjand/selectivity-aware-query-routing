@@ -1,25 +1,14 @@
 \section{Related Work}
 \label{sec:related}
 
-\textbf{ANN search and HNSW.} HNSW~\cite{malkov2020hnsw} answers a query by greedy best-first traversal of a hierarchy
-of proximity graphs with a bounded candidate list, whose size (\code{ef\_search}) controls the speed--recall trade-off.
-A predicate applied after traversal may leave few qualifying candidates.
-
-\textbf{Filtered ANN search.} Li et al.~\cite{li2025attribute} classify filtered-ANN methods into pre-, post- and
-joint filtering and evaluate them at selectivities from 0.1\% to 100\%. The best method depends on selectivity and on
-the index family. Filtered-DiskANN~\cite{gollapudi2023filtered} builds label-aware proximity graphs, and
-ACORN~\cite{patel2024acorn} supports arbitrary predicates by traversing the predicate-induced subgraph of a denser
-HNSW-style graph. Both change the index; we instead choose per query between the indexes PostgreSQL already provides.
-
-\textbf{Filtered search in PostgreSQL.} pgvector offers HNSW indexes and, since version 0.8, iterative index scans
-that continue traversal until enough rows pass the filter, but leaves the choice between exact and approximate plans
-to PostgreSQL's cost-based planner~\cite{pgvector}. Amanbayev et al.~\cite{amanbayev2026filtered} compare filtering in
-FAISS, Milvus and pgvector and observe that pgvector's planner sometimes prefers approximate scans where exact scans
-would give perfect recall at similar latency. The planner bases this choice on row estimates from the equi-depth
-histograms and most-common-value (MCV) lists in \code{pg\_stats}~\cite{pgdocs-rowest}; our router reuses the same
-statistics.
-
-\textbf{Gap.} Selectivity-dependent behavior of filtered vector search is well documented. Missing is an evaluation of
-how far a \emph{single calibrated cardinality threshold}, built only from existing statistics and indexes, gets
-relative to fixed strategies and PostgreSQL's own planner, under explicit recall and completeness constraints and with
+HNSW~\cite{malkov2020hnsw} answers a query by greedy traversal of layered proximity graphs with a bounded candidate
+list, whose size (\code{ef\_search}) controls the speed--recall trade-off. Li et al.~\cite{li2025attribute} classify
+filtered-ANN methods into pre-, post- and joint filtering and show that the best method depends on selectivity.
+Filtered-DiskANN~\cite{gollapudi2023filtered} builds label-aware graphs, and ACORN~\cite{patel2024acorn} traverses the
+predicate-induced subgraph of a denser HNSW-style graph; both change the index, whereas we choose between the indexes
+PostgreSQL already provides. Amanbayev et al.~\cite{amanbayev2026filtered} compare filtering in FAISS, Milvus and
+pgvector and observe that pgvector's planner sometimes prefers approximate scans where exact scans would give perfect
+recall. The planner bases this choice on row estimates from the histograms in \code{pg\_stats}~\cite{pgdocs-rowest},
+which our router reuses. What is missing is an evaluation of how far a \emph{single calibrated threshold} on these
+estimates gets relative to fixed strategies and the default planner, under explicit quality constraints and with
 held-out testing.

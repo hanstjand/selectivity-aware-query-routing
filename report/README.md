@@ -1,6 +1,6 @@
 # IEEE Conference Report
 
-`main.pdf` is the final report, *Selectivity-Aware Query Routing for Filtered Vector Search*. It is an 8-page IEEE
+`main.pdf` is the final report, *Selectivity-Aware Query Routing for Filtered Vector Search*. It is a 5-page IEEE
 conference paper (`IEEEtran`, conference mode) built from the measured results in `../results/full/`.
 
 ```

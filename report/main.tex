@@ -3,8 +3,6 @@
 
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithm}
-\usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{booktabs}
@@ -18,8 +16,6 @@
   pdfauthor={Gregorius Kevin Gorat, Hans Tjandra, Felix Anthony, DINH Hong Phuoc},
   pdfkeywords={filtered vector search, PostgreSQL, pgvector, HNSW, query optimization, selectivity estimation}}
 
-\renewcommand{\algorithmicrequire}{\textbf{Input:}}
-\renewcommand{\algorithmicensure}{\textbf{Output:}}
 \newcommand{\Mhat}{\hat{M}}
 \newcommand{\sel}{s}
 \newcommand{\code}[1]{\texttt{#1}}
@@ -37,18 +33,16 @@ Course project, Advanced Database Systems}}
 \maketitle
 
 \begin{abstract}
-Vector search inside relational databases is usually combined with metadata predicates. In PostgreSQL with pgvector,
-a filtered top-$k$ query can be answered exactly by filtering through a B-tree and ranking every eligible row, or
-approximately by an HNSW index scan that filters candidates after retrieval. Exact search becomes slow as more rows
-match, while HNSW loses recall or returns fewer than $k$ rows under selective filters. We evaluate a lightweight
+In PostgreSQL with pgvector, a filtered top-$k$ vector query can be answered exactly by filtering and ranking every
+eligible row, or approximately by an HNSW index scan that filters candidates after retrieval. Exact search slows down
+as more rows match, while HNSW loses recall or returns too few rows under selective filters. We evaluate a lightweight
 router that estimates the number of matching rows from PostgreSQL's own column statistics and runs exact search when
-the estimate is at most a threshold $T$, and HNSW with iterative scanning otherwise. $T$ is calibrated on 70\% of the
-query vectors and evaluated once on the remaining 30\%. On 100{,}000 512-dimensional LAION/CLIP vectors and 2{,}700
-range-filtered queries spanning 0.1\%--90\% selectivity, the router achieves a mean strict Recall@10 of 0.990 with
-complete results, a median latency of 2.50\,ms and a 95th-percentile latency of 5.33\,ms. The best fixed strategies
-meeting the same quality targets reach 4.57\,ms and 26.28\,ms. PostgreSQL's default plan choice is faster but returns
-incomplete results for 27\% of queries. At individual selectivity levels the router is at best on par with the
-strategy it selects; its benefit comes from avoiding each fixed strategy's worst regime.
+the estimate is at most a threshold $T$, and iterative HNSW otherwise. $T$ is calibrated on 70\% of the query vectors
+and evaluated once on the rest. On 100{,}000 LAION/CLIP vectors and 2{,}700 range-filtered queries spanning
+0.1\%--90\% selectivity, the router reaches a mean Recall@10 of 0.990 with complete results, a median latency of
+2.50\,ms and a 95th-percentile latency of 5.33\,ms, against 4.57\,ms and 26.28\,ms for the best fixed strategies
+meeting the same quality targets. PostgreSQL's default plan choice is faster but returns incomplete results for 27\%
+of queries.
 \end{abstract}
 
 \begin{IEEEkeywords}

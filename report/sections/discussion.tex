@@ -1,38 +1,14 @@
-\section{Discussion}
+\section{Discussion and Limitations}
 \label{sec:discussion}
 
-\textbf{Why lightweight routing helps.} The slow or incomplete regimes of the fixed strategies lie at opposite ends of
-the selectivity axis: exact search is slow when many rows qualify, iterative HNSW when few do, and single-pass HNSW is
-incomplete below about 25\%. A router therefore only needs to know on which side of the crossover a query falls, and
-PostgreSQL's histograms answer that with errors of a few percent near the crossover. This is far smaller than the
-spacing of the selectivity levels. The router thus closes almost all of the gap to the hindsight latency floor at a
-cost of microseconds, which answers RQ2 positively for this workload. The benefit lies in the tail and in robustness
-across selectivities, not at individual levels, where P1 is at best on par with the arm it selects.
+Routing works here because the weak regimes of the fixed strategies lie at opposite ends of the selectivity axis:
+exact search is slow when many rows qualify, iterative HNSW when few do, and single-pass HNSW is incomplete below about
+25\%. A router only needs to know on which side of the crossover a query falls, and PostgreSQL's histograms answer that
+with errors of a few percent. The default planner fails for a different reason: its cost model assumes an index scan
+returns every qualifying row, so it picks single-pass HNSW from 2\% upwards and returns incomplete results. The
+hypothesis that exact search wins for few qualifying rows and HNSW for many is supported, with a crossover between
+2{,}000 and 5{,}000 of 100{,}000 rows.
 
-\textbf{Why the default planner is fast but incomplete.} Choosing HNSW from 2\% upwards is the cheapest plan by
-PostgreSQL's cost model, which assumes the scan returns every qualifying row. With a post-filtered single-pass scan
-that assumption fails for 27\% of the workload. Enabling iterative scanning would restore completeness, but iterative
-scanning changes execution, not costing, so the planner would still pick HNSW at 2\%, where iterative HNSW is about
-twice as slow as exact search (7.29 vs.\ 3.46\,ms). This supports~\cite{amanbayev2026filtered} and suggests the
-planner would need an estimate of result completeness, or of iterative-scan cost, to choose well.
-
-\textbf{Strengths and weaknesses of a single threshold.} One threshold on the estimated row count needs no model and
-no engine change, and it works when the two cost curves are monotone in selectivity and cross once, as they do here.
-Its weakness is the crossover itself. At 5\% the faster arm varies between query vectors with the same row count, and
-the mean-latency objective accepted a tail loss over a flat interval of thresholds. The threshold is also specific to
-the hardware, the HNSW parameters and the attribute distribution. This answers RQ3: P1 loses measurably only near the
-crossover (in the tail) and, by a fraction of a millisecond, at the broadest levels where single-pass HNSW is already
-complete; nowhere does its overhead outweigh its savings in aggregate. The hypothesis that exact search wins for few qualifying rows and HNSW for many is supported,
-with a crossover at 2{,}000--5{,}000 of 100{,}000 rows.
-
-\subsection{Limitations}
-The results come from one dataset (100{,}000 LAION/CLIP vectors), one numeric attribute and closed-range predicates.
-The attribute is a CLIP score that may correlate with the embedding geometry, so other attributes or categorical
-filters may shift the crossover. All measurements use one machine, with PostgreSQL in Docker on a Windows desktop,
-which adds latency and noise; absolute numbers will differ on other hardware. The benchmark is warm-cache and
-single-client: concurrent workloads, where B1's parallel scans compete for CPU, and cold-cache execution, where HNSW's
-random accesses become costlier, were not evaluated. The table is static, so statistics staleness was not studied.
-The HNSW parameters were fixed in advance, and the threshold is valid only for this configuration. The held-out split
-has 90 query vectors, and per-level differences of a few tens of microseconds are within run-to-run noise. The
-improvements should
-not be generalized to other data sizes, filter distributions, hardware or workloads without re-calibration.
+The results come from one dataset, one numeric attribute and range predicates, measured on one machine with a warm
+cache and a single client. Concurrent and cold-cache workloads, data updates, and other HNSW settings were not
+studied, and the threshold must be recalibrated for other hardware or data.

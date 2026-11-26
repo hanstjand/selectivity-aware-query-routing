@@ -1,16 +1,18 @@
 \section{Experimental Results}
 \label{sec:results}
 
-Unless stated otherwise, results refer to the 810 held-out configurations (90 query vectors $\times$ 9 levels).
+All results refer to the 810 held-out configurations (90 query vectors $\times$ 9 levels).
 
 \subsection{Overall Performance}
-Table~\ref{tab:overall} summarizes the held-out results. Of the four baselines, only exact search (B1) and iterative
-HNSW (B2-iter) meet the quality targets. Single-pass HNSW (B2-plain) and PostgreSQL's default plan choice (B3) are
-the fastest in raw latency but return incomplete answers for 60.5\% and 27.2\% of the queries. Among the methods that
-meet both targets, P1 has the lowest p50, p95 and mean latency. Its p50 of 2.500\,ms is 45\% below that of B2-iter
-(4.569\,ms), the best qualifying baseline at the median. Its p95 of 5.327\,ms is 80\% below that of B1 (26.281\,ms),
-the best qualifying baseline in the tail. B1's recall is 0.99988 rather than 1 because of a single numerical near-tie
-at rank 10; its tie-tolerant recall is 1.
+Table~\ref{tab:overall} summarizes the held-out results. Only exact search (B1) and iterative HNSW (B2-iter) meet the
+quality targets among the baselines. Single-pass HNSW (B2-plain) and the default planner (B3) are the fastest but
+return incomplete answers for 60.5\% and 27.2\% of the queries. Among the methods that meet both targets, P1 has the
+lowest p50, p95 and mean latency: its p50 of 2.500\,ms is 45\% below B2-iter's (4.569\,ms), and its p95 of 5.327\,ms
+is 80\% below B1's (26.281\,ms). P1 therefore meets all success criteria (RQ2). It captures $\Gamma=100.2\%$, 99.9\%
+and 99.5\% of the Oracle's latency reduction at p50, p95 and mean; a value above 100\% is run-to-run noise (3\,$\mu$s),
+not a gain over the floor. P1's routing agrees with the Oracle on 98.0\% of configurations, and 14 of the 16
+disagreements occur at 5\%. On the calibration split, the simulated router at $T^{*}$ had a mean of 2.652\,ms and
+recall 0.994, close to the 2.772\,ms and 0.990 measured on the held-out split.
 
 \begin{table}[t]
 \caption{Held-out results (810 configurations). Latency in ms (per-configuration median of five runs);
@@ -45,66 +47,6 @@ and B3 are fast but incomplete below 25\% (Fig.~\ref{fig:quality}).}
 \label{fig:latency}
 \end{figure*}
 
-\subsection{Performance Across Filter Selectivities}
-Fig.~\ref{fig:latency} shows the opposite cost trends of the two arms (RQ1). The median latency of B1 grows from
-1.21\,ms at 0.1\% to 24.2\,ms at 25\%, because every eligible row is fetched and its 512-dimensional distance
-computed. B1 is faster at 50\% (22.7\,ms) than at 25\%, consistent with the planner switching from a non-parallel
-bitmap scan to a parallel sequential scan between these levels; at 90\% it takes 26.2\,ms. B2-iter shows the reverse
-trend: 35.3\,ms at 0.1\%, 12.9\,ms at 1\% and about 2.5--2.6\,ms from 25\% upwards. Under a selective filter almost
-every traversed candidate is discarded, so the iterative scan keeps expanding; at 0.1\% it sometimes exhausts its scan
-budget before finding ten qualifying rows (Section~\ref{sec:quality}). The arms cross between 2\% (B1 3.46\,ms vs.\
-B2-iter 7.29\,ms) and 5\% (6.58 vs.\ 4.50\,ms). P1 sends every configuration up to 2\% to B1 and every one from 10\%
-upwards to B2-iter, so it tracks the lower envelope. At 5\% it routes 85 of 90 configurations to B2-iter, because the
-frozen threshold ($T^{*}=4{,}787$ estimated rows) lies just below the typical estimate of about 5{,}000.
-
-\subsection{Retrieval Quality}
-\label{sec:quality}
-Fig.~\ref{fig:quality} explains why the two fastest baselines fail the targets. B2-plain inspects only
-\code{ef\_search=100} candidates, and under a selective filter too few survive: it is never complete at 0.1\%--2\%,
-10\% complete at 5\% and 49\% complete at 10\%. B3 uses an exact B-tree plan up to 1\%, but from 2\% upwards
-PostgreSQL's planner selects the non-iterative HNSW scan. B3 then inherits B2-plain's incompleteness exactly (0\%
-complete and Recall@10 0.217 at 2\%), consistent with the planner behavior reported in~\cite{amanbayev2026filtered}.
-Iterative scanning largely restores completeness, but not at the most selective level: at 0.1\%, B2-iter is complete
-for 96.7\% of queries with recall 0.847, because the scan budget runs out first. P1 avoids this regime by
-construction. Its per-level recall is at least 0.978, and it is complete for every held-out query.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/quality_vs_selectivity.pdf}
-\caption{Mean strict Recall@10 (top) and completeness (bottom) on the held-out split; horizontal lines mark the targets
-0.95 and 0.99. P1 coincides with B1 up to 2\% and with B2-iter from 10\%.}
-\label{fig:quality}
-\end{figure}
-
-\subsection{Selectivity Estimation Accuracy}
-Fig.~\ref{fig:estimation} compares the cached \code{pg\_stats} estimates with the actual counts for all 2{,}700
-filters. The mean relative error falls from 11.0\% at 0.1\% (about 11 rows) to 3.9\% at 1\%, 1.7\% at 5\% and 0.3\% at
-90\%. With 100 equi-depth buckets of about 1\% each, narrower ranges are interpolated within one bucket, and a few
-narrow ranges in sparse regions are underestimated by up to a factor of 14 (Fig.~\ref{fig:estimation}a). Our estimator
-reproduces PostgreSQL's own planner estimate with a median relative difference of 0.02\% (95th percentile 1.2\%), so
-the router sees what the optimizer sees. For routing, only errors near the threshold matter. On both splits, all
-0.1\%--2\% estimates (at most 2{,}160 rows) lie far below $T^{*}$ and all 10\%--90\% estimates (at least 9{,}229) far
-above it. Misestimation therefore affects routing only at 5\%, whose estimates range from 4{,}149 to 5{,}221 rows.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/estimation.pdf}
-\caption{Histogram-based row estimates versus actual matching rows for all 2{,}700 filters (a), and relative error by
-selectivity level (b).}
-\label{fig:estimation}
-\end{figure}
-
-\subsection{Proposed Router versus Baselines}
-P1 thus meets all pre-registered criteria on the held-out split (RQ2). Calibration and evaluation agree closely: the
-simulated router at $T^{*}$ had a mean of 2.652\,ms, a p95 of 4.670\,ms and a recall of 0.994 on the calibration split
-(45.3\% of configurations sent to B1), versus 2.772\,ms, 5.327\,ms and 0.990 measured on the held-out split. This
-does not mean that P1 wins at every level. Table~\ref{tab:perlevel} compares P1 with the best qualifying baseline
-\emph{at each level}, which is usually the arm P1 itself selects or a method running the same plan. Under this strict
-criterion, P1 is faster at both statistics only at 25\%. In most cells the difference is a few tens of microseconds,
-the size of run-to-run noise. Two differences are larger: at 5\%, P1's p95 is 1.16\,ms above B1's
-(Section~\ref{sec:negative}), and at 50\% and 90\%, B3 is 0.06--0.20\,ms faster than P1. At those two levels B3 runs
-single-pass HNSW, which is already complete there and slightly cheaper than the iterative scan P1 uses.
-
 \begin{table*}[t]
 \caption{P1 versus the best qualifying baseline at each level (held-out). Latency in ms; $\Delta=$ P1 $-$ best.
 Routed: configurations sent to B1 by P1 / by the Oracle (of 90)}
@@ -131,26 +73,62 @@ Level & to B1 & Best & best & P1 & $\Delta$ & & Best & best & P1 & $\Delta$\\
 \end{tabular}
 \end{table*}
 
-\subsection{Oracle Comparison}
-Relative to the best qualifying baseline, P1 captures $\Gamma=100.2\%$ of the Oracle's latency reduction at the median
-(B2-iter 4.569, P1 2.500, Oracle 2.504\,ms), 99.9\% at p95 (B1 26.281, P1 5.327, Oracle 5.317\,ms) and 99.5\% for the
-mean (B2-iter 10.323, P1 2.772, Oracle 2.734\,ms). A value above 100\% does not mean P1 beats the floor: P1 and the
-Oracle are measured in separate executions, and the 3\,$\mu$s difference at the median is within run-to-run noise.
-P1's routing agrees with the Oracle on 98.0\% of configurations; 14 of the 16 disagreements occur at 5\% and two at
-2\%. The Oracle knows both arms' latencies in hindsight, pays no overhead and enforces no quality constraint; its
-recall (0.991) and completeness (100\%) merely happen to be high here. Per level, the ratio is mostly undefined because
-the Oracle is not faster than the best baseline.
+\subsection{Performance Across Selectivities}
+Fig.~\ref{fig:latency} shows the opposite cost trends of the two arms (RQ1). B1's median latency grows from 1.21\,ms
+at 0.1\% to 24.2\,ms at 25\%, because every eligible row is fetched and its distance computed. B2-iter shows the
+reverse trend: 35.3\,ms at 0.1\%, 12.9\,ms at 1\% and about 2.5\,ms from 25\% upwards, because under a selective filter
+almost every visited candidate is discarded. The arms cross between 2\% (B1 3.46 vs.\ B2-iter 7.29\,ms) and 5\% (6.58
+vs.\ 4.50\,ms). P1 sends every configuration up to 2\% to B1 and every one from 10\% upwards to B2-iter, so it tracks
+the lower envelope.
 
-\subsection{Additional Findings and Negative Results}
+Fig.~\ref{fig:quality} shows why the two fastest baselines fail the targets. B2-plain inspects only 100 candidates and
+is never complete at 0.1\%--2\%. B3 uses an exact B-tree plan up to 1\%, but from 2\% upwards the planner selects the
+single-pass HNSW scan and inherits B2-plain's incompleteness (0\% complete at 2\%), consistent
+with~\cite{amanbayev2026filtered}. Iterative scanning restores completeness except at 0.1\%, where B2-iter exhausts
+its scan budget for 3.3\% of queries (recall 0.847). P1 avoids this regime: its per-level recall is at least 0.978,
+and every held-out query is complete.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/quality_vs_selectivity.pdf}
+\caption{Mean strict Recall@10 (top) and completeness (bottom) on the held-out split; horizontal lines mark the targets
+0.95 and 0.99. P1 coincides with B1 up to 2\% and with B2-iter from 10\%.}
+\label{fig:quality}
+\end{figure}
+
+\subsection{Selectivity Estimation Accuracy}
+Fig.~\ref{fig:estimation} compares the cached estimates with the actual counts for all 2{,}700 filters. The mean
+relative error falls from 11.0\% at 0.1\% (about 11 rows) to 1.7\% at 5\% and 0.3\% at 90\%; with 100 histogram buckets
+of about 1\% each, the narrowest ranges are the least accurate. Our estimator matches PostgreSQL's own planner estimate
+with a median difference of 0.02\%. For routing only errors near $T^{*}$ matter: all estimates up to 2\% (at most
+2{,}160 rows) lie far below it and all from 10\% upwards (at least 9{,}229) far above it, so misestimation can affect
+only the 5\% level (4{,}149--5{,}221 rows).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/estimation.pdf}
+\caption{Histogram-based row estimates versus actual matching rows for all 2{,}700 filters (a), and relative error by
+selectivity level (b).}
+\label{fig:estimation}
+\end{figure}
+
+\subsection{Per-Level Comparison and Negative Results}
 \label{sec:negative}
-\textbf{The 5\% level and the limits of one threshold.} The calibration objective is nearly flat: every feasible $T$
-between 2{,}103 and 4{,}893 estimated rows is within 1\% of the minimum mean latency (Fig.~\ref{fig:calibration}).
-The pre-registered rule picked the minimizer $T^{*}=4{,}787$, which lies inside the 5\% level's range of estimates, so
-P1 sent 85 of 90 of those configurations to B2-iter. At 5\%, B2-iter is faster at the median (4.50 vs.\ 6.58\,ms for
-B1) but has a heavier tail (p95 8.37 vs.\ 7.00\,ms), and the Oracle would have sent 13 configurations to B1. Moving
-$T$ cannot remove this p95 loss: a lower $T$ routes the same configurations to B2-iter, and a higher $T$ sends the
-whole level to B1, raising its median to about 6.6\,ms. Near the crossover the faster arm depends on the query vector
-and filter position, which a cardinality threshold cannot observe. $T^{*}$ was not re-tuned after the held-out run.
+Table~\ref{tab:perlevel} compares P1 with the best qualifying baseline \emph{at each level}, which is usually the arm
+P1 selects or a method running the same plan. Here P1 is at best on par: most differences are a few tens of
+microseconds, the size of run-to-run noise. Two losses are larger.
+
+\textbf{The 5\% level.} The calibration objective is nearly flat: every feasible $T$ between 2{,}103 and 4{,}893
+estimated rows is within 1\% of the minimum mean latency (Fig.~\ref{fig:calibration}). The chosen $T^{*}=4{,}787$ lies
+inside the 5\% level's range of estimates, so P1 sent 85 of 90 of those configurations to B2-iter. B2-iter is faster
+there at the median (4.50 vs.\ 6.58\,ms) but has a heavier tail, so P1's p95 is 1.16\,ms above B1's. No single
+threshold fixes this: near the crossover the faster arm depends on the query vector, which a row count cannot capture.
+
+\textbf{Broad filters.} At 50\% and 90\%, single-pass HNSW is already complete, and B3 is 0.06--0.20\,ms faster than
+P1, which uses the iterative scan.
+
+The routing decision itself costs 1.4\,$\mu$s in a tight loop and 9.4\,$\mu$s (median) when measured between queries,
+which is negligible for millisecond queries.
 
 \begin{figure}[t]
 \centering
@@ -160,11 +138,3 @@ The shaded band holds every feasible $T$ within 1\% of the minimum mean latency;
 estimate; the vertical line is the frozen $T^{*}$.}
 \label{fig:calibration}
 \end{figure}
-
-\textbf{Single-pass HNSW at broad filters.} From 50\% upwards, B2-plain and B3 are complete and 50--90\,$\mu$s
-faster than B2-iter at the median. A third arm for very broad filters could recover this, but the gain is small compared with
-the cost of a second threshold.
-
-\textbf{Routing overhead.} An estimate plus decision takes 1.4\,$\mu$s in a tight loop. Measured live between database
-round trips it takes 9.4\,$\mu$s at the median (10.6\,$\mu$s p95). This cost is negligible for millisecond queries;
-the measured difference between P1 and the arm it selects is smaller than the run-to-run noise.
