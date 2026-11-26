@@ -131,7 +131,7 @@ def test_oracle_floor_is_a_lower_bound_for_any_router():
 def test_gain_captured_cases():
     assert gain_captured(10.0, 6.0, 2.0) == (0.5, "")
     assert gain_captured(10.0, 10.0, 2.0)[0] == 0.0
-    assert gain_captured(10.0, 1.0, 2.0)[0] > 1.0  # P1 beats the floor only by noise/quality trade
+    assert gain_captured(10.0, 1.0, 2.0)[0] > 1.0  # the router beats the floor only by noise or a quality trade-off
     assert gain_captured(None, 6.0, 2.0)[0] is None
     assert gain_captured(2.0, 3.0, 2.0)[0] is None  # no headroom
     assert gain_captured(2.0, 2.0, 2.0 - 1e-12)[0] is None  # numerically zero headroom

@@ -1,4 +1,0 @@
-18:14:00 INFO fvsroute.db: built btree index in 0.0s
-18:14:11 INFO fvsroute.db: built hnsw index in 10.4s
-18:14:12 INFO fvsroute.pipeline: db ready: 100000 rows, heap 260 MB, hnsw 260 MB, hnsw build 10.4s
-18:14:12 INFO fvs: step db-setup finished in 13.3s

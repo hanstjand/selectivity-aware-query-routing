@@ -1,47 +1,9 @@
 {
- "ids": {
+  "eligible_count_errors": 0,
+  "unexplained_exact_errors": 0,
+  "exact_near_ties": 2,
   "rows": 100000,
-  "distinct": 100000,
-  "min": 0,
-  "max": 99999,
-  "pass": true
- },
- "filter_values_exact": {
-  "pass": true
- },
- "vectors_exact_sample": {
-  "n": 1000,
-  "pass": true
- },
- "cosine_consistency": {
-  "max_abs_diff": 4.469753063229831e-07,
-  "tolerance": 1e-06,
-  "pass": true
- },
- "predicate_equivalence": {
-  "rows_where_x_plus_0_differs": 0,
-  "nonfinite_rows": 0,
-  "pass": true
- },
- "eligible_counts": {
-  "n_filters": 2700,
-  "mismatches": 0,
-  "pass": true
- },
- "stats_snapshot_current": {
-  "pass": true
- },
- "estimator_matches_planner": {
-  "median_abs_rel_diff": 0.0002364428207695555,
-  "p95_abs_rel_diff": 0.010972673236310602,
-  "note": "informational: PostgreSQL clamps/rounds estimates slightly differently",
-  "pass": true
- },
- "b1_equals_ground_truth": {
-  "n_configs": 2700,
-  "strict_mismatches": 2,
-  "unexplained_mismatches": 0,
-  "pass": true
- },
- "all_pass": true
+  "predicate_mismatches": 0,
+  "max_cosine_difference": 2.961057218309193e-07,
+  "all_pass": true
 }

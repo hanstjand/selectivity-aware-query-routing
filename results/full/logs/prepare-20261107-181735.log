@@ -1,2 +1,0 @@
-18:17:38 INFO fvsroute.pipeline: prepared 2700 configs (300 queries x 9 levels); GT gate mean overlap 0.9987; tie_at_k=10
-18:17:38 INFO fvs: step prepare finished in 2.1s

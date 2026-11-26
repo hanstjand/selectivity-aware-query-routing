@@ -1,4 +1,4 @@
-"""Run the proposal experiment, one step at a time or all at once."""
+"""Run the experiment, one step at a time or all at once."""
 
 import argparse
 import logging
@@ -20,7 +20,7 @@ PIPELINE = (
 STEPS = ("all", "download", "prepare", "db-setup", "verify", "bench", "calibrate", "report")
 
 
-def run_step(cfg, step, phase=None, from_run=None):
+def run_step(cfg, step, phase=None):
     if step == "all":
         for name, benchmark_phase in PIPELINE:
             run_step(cfg, name, benchmark_phase)
@@ -29,7 +29,7 @@ def run_step(cfg, step, phase=None, from_run=None):
             raise SystemExit("bench needs --phase calibration|test")
         benchmark.step_bench(cfg, phase)
     elif step == "report":
-        report.make_report(cfg, from_run)
+        report.make_report(cfg)
     else:
         actions = {
             "download": prepare.step_download,
@@ -47,10 +47,7 @@ def main(argv=None):
     parser.add_argument("--config", default="configs/full.yaml")
     parser.add_argument("--run-id", help="write a separate run under results/<name>")
     parser.add_argument("--phase", choices=("calibration", "test"))
-    parser.add_argument("--from-run", help="report only: reuse saved measurements from this run")
     args = parser.parse_args(argv)
-    if args.from_run and args.step != "report":
-        parser.error("--from-run can only be used with report")
     cfg = load_config(args.config, args.run_id)
     logs = cfg.run_dir / "logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -64,7 +61,7 @@ def main(argv=None):
         ],
         force=True,
     )
-    run_step(cfg, args.step, args.phase, args.from_run)
+    run_step(cfg, args.step, args.phase)
 
 
 if __name__ == "__main__":

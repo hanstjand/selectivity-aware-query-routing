@@ -29,16 +29,16 @@ predicate text and session-level planner settings. This separates the SQL \emph{
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}l>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{3.65cm}@{}}
 \toprule
-Method & Predicate; session & Plan observed (held-out run)\\
+Method & Predicate; session & Plan verified by \code{EXPLAIN}\\
 \midrule
-B1 & $a\in[\ell,u]$; index scans disabled & B-tree bitmap scan + sort ($\sel\le25\%$); parallel sequential scan + sort ($\sel\ge50\%$)\\
+B1 & $a\in[\ell,u]$; index scans disabled & B-tree bitmap scan or (parallel) sequential scan + sort; never HNSW\\
 B2-plain & $(a+0.0)\in[\ell,u]$; seq.\ scans disabled & HNSW index scan + filter (all levels)\\
 B2-iter & as B2-plain; iterative scan (\code{relaxed\_order}) & HNSW iterative scan + filter (all levels)\\
 B3 & $a\in[\ell,u]$; PostgreSQL defaults & B-tree for $\sel\le1\%$; non-iterative HNSW for $\sel\ge2\%$\\
 P1 & B1 or B2-iter by Eq.~\eqref{eq:route} & plan of the chosen arm\\
 \bottomrule
 \multicolumn{3}{@{}p{\columnwidth}@{}}{\scriptsize All HNSW-using sessions share \code{ef\_search=100} and
-\code{max\_scan\_tuples=20000}. B3+iter (supplementary) is B3 with iterative scanning enabled.}
+\code{max\_scan\_tuples=20000}.}
 \end{tabular}
 \end{table}
 
@@ -138,7 +138,7 @@ T^{*}=\arg\min_{T\in\mathcal{T}} L(T)\quad\text{s.t.}\quad R(T)\ge0.95,\ \ K(T)\
 \end{equation}
 where $\mathcal{T}$ contains $0$, $\infty$ and the geometric midpoints between consecutive distinct estimates. Ties
 go to the lower p95 latency, then to the larger $T$. $T=\infty$ (always B1) is always feasible. The calibration code
-rejects test-split configurations. $T^{*}$ is stored with hashes of the statistics, the calibration input and the
+rejects test-split configurations. $T^{*}$ is stored with hashes of the statistics and the
 configuration, and the held-out run refuses to start if they differ (Algorithm~\ref{alg:p1}). The HNSW configuration
 is fixed in advance, not tuned jointly with $T$.
 

@@ -362,7 +362,7 @@ def step_calibrate(cfg):
     frozen, curve = calibrate(cfg, measurements, estimates, overhead, search.stats_hash(snapshot))
     write_json(cfg.run_dir / "calibration/frozen_router.json", frozen)
     curve.to_parquet(cfg.run_dir / "calibration/threshold_curve.parquet", index=False)
-    log.info("B4 threshold: %.1f estimated rows", frozen["threshold_T"])
+    log.info("P1 threshold: %.1f estimated rows", frozen["threshold_T"])
     return frozen
 
 
@@ -386,7 +386,7 @@ def step_bench(cfg, phase):
         raise RuntimeError("this phase already has measurements; use a new --run-id for a rerun")
     output.mkdir(parents=True, exist_ok=True)
     settings = search.method_settings(cfg)
-    methods = list(search.BASELINES) + (["B4"] if phase == "test" else [])
+    methods = list(search.BASELINES) + (["P1"] if phase == "test" else [])
     vectors = {key: Vector(value) for key, value in prepared.queries.items()}
     rows_by_id = {row.config_id: row for row in workload.itertuples(index=False)}
     connections = {}
@@ -425,7 +425,7 @@ def step_bench(cfg, phase):
         for row in workload.itertuples(index=False):
             params = {"lo": row.lo, "hi": row.hi, "q": vectors[row.query_id]}
             for method in methods:
-                arm = search.route(stats, threshold, row.lo, row.hi)[0] if method == "B4" else method
+                arm = search.route(stats, threshold, row.lo, row.hi)[0] if method == "P1" else method
                 plan = search.classify(search.explain(cursors[arm], sql[arm], params), cfg.database.table)
                 expectation = "exact" if arm == "B1" else "hnsw" if arm.startswith("B2") else "any"
                 if not search.meets_expectation(expectation, plan):
@@ -440,7 +440,7 @@ def step_bench(cfg, phase):
             ids = []
             start = time.perf_counter_ns()
             try:
-                if method == "B4":
+                if method == "P1":
                     arm, estimate = search.route(stats, threshold, row.lo, row.hi)
                     overhead = time.perf_counter_ns() - start
                 ids = search.execute(cursors[arm], sql[arm], params)
@@ -450,7 +450,7 @@ def step_bench(cfg, phase):
                     connections[arm] = search.connect(cfg.database, settings[arm])
                     cursors[arm] = connections[arm].cursor()
             latency = time.perf_counter_ns() - start
-            return ids, latency, arm if method == "B4" else None, estimate, overhead, error
+            return ids, latency, arm if method == "P1" else None, estimate, overhead, error
 
         pairs = [(config_id, method) for config_id in workload["config_id"] for method in methods]
         records, passes = [], []

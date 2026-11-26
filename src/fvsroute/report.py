@@ -1,4 +1,4 @@
-"""Report only the methods and metrics promised in the proposal."""
+"""Write the report: summary tables, success criteria, estimation error and figures."""
 
 import json
 import logging
@@ -12,10 +12,9 @@ import numpy as np
 import pandas as pd
 
 from .benchmark import gain_captured, oracle_floor, summarize
-from .config import write_json
 from .search import BASELINES
 
-METHODS = [*BASELINES, "B4", "Oracle"]
+METHODS = [*BASELINES, "P1", "Oracle"]
 METRICS = ("p50_ms", "p95_ms", "mean_ms", "recall", "completeness")
 
 
@@ -28,7 +27,7 @@ def markdown_table(frame):
 
 
 def success_criteria(summary, cfg, scope):
-    router = summary[summary["method"] == "B4"].iloc[0]
+    router = summary[summary["method"] == "P1"].iloc[0]
     oracle = summary[summary["method"] == "Oracle"].iloc[0]
     baselines = summary[summary["method"].isin(BASELINES) & summary["meets_quality"]]
     rows = [
@@ -54,7 +53,7 @@ def success_criteria(summary, cfg, scope):
                     "result": result,
                     "detail": "no qualifying baseline"
                     if best_value is None
-                    else f"B4 {router[metric]:.3f} ms vs {best_name} {best_value:.3f} ms",
+                    else f"P1 {router[metric]:.3f} ms vs {best_name} {best_value:.3f} ms",
                 }
             )
         gain, reason = gain_captured(best_value, float(router[metric]), float(oracle[metric]))
@@ -119,8 +118,8 @@ def plot_calibration(curve, estimation, frozen, figures):
                 ax.axvline(threshold, color="#e87ba4", linewidth=1.0)
         latency.plot(visible["T"], visible["mean_ms"], color="#0b0b0b", label="mean")
         latency.plot(visible["T"], visible["p95_ms"], color="#898781", label="p95")
-        latency.set_ylabel("simulated B4 latency (ms)")
-        latency.legend(loc="upper left", bbox_to_anchor=(0.3, 0.9), ncol=2)
+        latency.set_ylabel("simulated P1 latency (ms)")
+        latency.legend(loc="center left", bbox_to_anchor=(0.01, 0.55))
         # Scale to the measured host so higher latencies remain visible.
         upper = max(1.0, visible[["mean_ms", "p95_ms"]].max().max() * 1.13)
         latency.set_ylim(0, upper)
@@ -151,16 +150,11 @@ def plot_calibration(curve, estimation, frozen, figures):
         plt.close(fig)
 
 
-def make_report(cfg, from_run=None):
-    source = cfg.results_dir / from_run if from_run else cfg.run_dir
-    if from_run and source.resolve() == cfg.run_dir.resolve():
-        raise ValueError("use a different --run-id so the source measurements stay unchanged")
+def make_report(cfg):
+    source = cfg.run_dir
     test = pd.read_parquet(source / "test/per_config.parquet")
-    # P1 is the router's name in the historical results; the proposal calls it B4.
-    test["method"] = test["method"].replace({"P1": "B4"})
-    test = test[test["method"].isin([*BASELINES, "B4"])].copy()
-    if set(test["method"]) != set([*BASELINES, "B4"]):
-        raise ValueError("report requires the four baselines and B4")
+    if set(test["method"]) != set([*BASELINES, "P1"]):
+        raise ValueError("report requires the four baselines and P1")
     combined = pd.concat([test, oracle_floor(test)], ignore_index=True)
     overall = summarize(combined, ["method"])
     by_level = summarize(combined, ["method", "target_sel"])
@@ -234,18 +228,10 @@ def make_report(cfg, from_run=None):
     plot_calibration(
         pd.read_parquet(source / "calibration/threshold_curve.parquet"), estimation, frozen, figures
     )
-    provenance = {
-        "source_run": source.name,
-        "mode": "saved measurements" if from_run else "new experiment",
-        "threshold_T": frozen["threshold_T"],
-        "frozen_router": frozen,
-    }
-    write_json(cfg.run_dir / "provenance.json", provenance)
     lines = [
-        f"# Proposal experiment: {cfg.run_id}",
-        f"Source: `{source.name}` ({provenance['mode']}). B4 is named P1 in historical measurements.",
+        f"# Experiment report: {cfg.run_id}",
         f"Frozen threshold: **{frozen['threshold_T']:,.1f} estimated rows**.",
-        "Latency includes execute/fetch and B4 routing overhead. Each query configuration uses the median of its timed repetitions. "
+        "Latency includes execute/fetch and P1 routing overhead. Each query configuration uses the median of its timed repetitions. "
         "Oracle chooses the faster measured B1/B2-iter result without a quality constraint.",
         "## Held-out results",
         markdown_table(overall[columns]),

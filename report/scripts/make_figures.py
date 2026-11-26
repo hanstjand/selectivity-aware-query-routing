@@ -28,7 +28,7 @@ OUT = ROOT / "report" / "figures"
 COL_W = 3.5      # IEEE single column (in)
 FULL_W = 7.16    # IEEE double column (in)
 
-# Validated categorical palette (same entity colours as results/full/figures)
+# Categorical palette, one colour per method
 SURFACE, INK, INK2, MUTED, GRID, AXIS = "#ffffff", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
 COLOR = {"B1": "#2a78d6", "B2-plain": "#eb6834", "B2-iter": "#1baf7a", "B3": "#eda100", "P1": "#e87ba4",
          "Oracle": INK2}
@@ -161,12 +161,13 @@ def main():
     ax.plot(c["T"], c["mean_ms"], color=INK, label="mean")
     ax.plot(c["T"], c["p95_ms"], color=MUTED, label="p95")
     ax.set_ylabel("simulated P1 latency (ms)")
-    ax.legend(loc="upper left", bbox_to_anchor=(0.3, 0.9), ncol=2)
+    ax.legend(loc="center left", bbox_to_anchor=(0.01, 0.55))
+    upper = c[["mean_ms", "p95_ms"]].max().max() * 1.13   # leave room for the level labels
     for s, m in cal.items():
         if s == 0.5:   # 50% and 90% medians are too close to label both; 90% marks the right end
             continue
-        ax.text(m, 27.5, f"{s * 100:g}%", ha="center", va="bottom", fontsize=5.5, color=INK2)
-    ax.set_ylim(0, 29)
+        ax.text(m, upper * 0.95, f"{s * 100:g}%", ha="center", va="bottom", fontsize=5.5, color=INK2)
+    ax.set_ylim(0, upper)
     ax = axes[1]
     ax.axvspan(lo, hi, color=GRID, alpha=0.7, linewidth=0)
     ax.plot(c["T"], c["recall"], color=INK, label="mean strict Recall@10")
@@ -180,7 +181,7 @@ def main():
     ax.legend(loc="lower right")
     for a in axes:
         a.axvline(T, color=COLOR["P1"], linewidth=1.0)
-    axes[0].annotate(f"$T^*$ = {T:,.0f}", (T, 15), xytext=(3, 0), textcoords="offset points", fontsize=6,
+    axes[0].annotate(f"$T^*$ = {T:,.0f}", (T, upper * 0.52), xytext=(3, 0), textcoords="offset points", fontsize=6,
                      color=INK)
     fig.tight_layout(h_pad=0.4)
     save(fig, "calibration_curve")

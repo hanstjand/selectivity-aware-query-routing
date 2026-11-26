@@ -1,21 +1,13 @@
 {
- "platform": "macOS-27.0.1-arm64-arm-64bit",
- "machine": "arm64",
- "python": "3.12.10",
- "cpu": "Apple M4",
- "cpu_count": 10,
- "mem_bytes": "17179869184",
- "docker_version": "29.2.1",
- "docker_resources": "cpus=10 mem=8217059328",
- "image": "pgvector/pgvector:0.8.7-pg17-bookworm sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8",
- "packages": {
-  "numpy": "2.5.4",
-  "psycopg": "3.3.8",
-  "psycopg-binary": "3.3.8",
-  "pgvector": "0.5.1",
-  "pandas": "3.1.1",
-  "pyarrow": "26.0.1",
-  "matplotlib": "3.11.2",
-  "pyyaml": "6.0.3"
- }
+  "platform": "Windows-10-10.0.19045-SP0",
+  "python": "3.12.16",
+  "packages": {
+    "numpy": "2.5.4",
+    "psycopg": "3.3.8",
+    "pgvector": "0.5.1",
+    "pandas": "3.1.1",
+    "pyarrow": "26.0.1",
+    "matplotlib": "3.11.2",
+    "pyyaml": "6.0.3"
+  }
 }

@@ -1,61 +1,61 @@
-scope,criterion,detail,result
-overall,1 quality,"recall 0.9906 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-overall,2 p50_ms,P1 1.332 vs best qualifying baseline B2-iter 2.716 ms,PASS
-overall,2 p95_ms,P1 3.297 vs best qualifying baseline B1 16.344 ms,PASS
-overall,3 gain captured (p50_ms),"best=B2-iter 2.716, P1 1.332, Oracle 1.313 ms",98.7%
-overall,3 gain captured (p95_ms),"best=B1 16.344, P1 3.297, Oracle 3.247 ms",99.6%
-overall,3 gain captured (mean_ms),"best=B1 6.688, P1 1.511, Oracle 1.469 ms",99.2%
-0.1%,1 quality,"recall 1.0000 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-0.1%,2 p50_ms,P1 0.414 vs best qualifying baseline B1 0.407 ms,FAIL
-0.1%,2 p95_ms,P1 0.454 vs best qualifying baseline B1 0.444 ms,FAIL
-0.1%,3 gain captured (p50_ms),"best=B1 0.407, P1 0.414, Oracle 0.407 ms",N/A (no headroom: oracle not faster than the best baseline)
-0.1%,3 gain captured (p95_ms),"best=B1 0.444, P1 0.454, Oracle 0.444 ms",N/A (no headroom: oracle not faster than the best baseline)
-0.1%,3 gain captured (mean_ms),"best=B1 0.408, P1 0.416, Oracle 0.408 ms",N/A (no headroom: oracle not faster than the best baseline)
-0.5%,1 quality,"recall 1.0000 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-0.5%,2 p50_ms,P1 0.760 vs best qualifying baseline B1 0.749 ms,FAIL
-0.5%,2 p95_ms,P1 0.817 vs best qualifying baseline B1 0.795 ms,FAIL
-0.5%,3 gain captured (p50_ms),"best=B1 0.749, P1 0.760, Oracle 0.749 ms",N/A (no headroom: oracle not faster than the best baseline)
-0.5%,3 gain captured (p95_ms),"best=B1 0.795, P1 0.817, Oracle 0.795 ms",N/A (no headroom: oracle not faster than the best baseline)
-0.5%,3 gain captured (mean_ms),"best=B1 0.753, P1 0.762, Oracle 0.753 ms",N/A (headroom 0.0 us < 1% of best: ratio not meaningful)
-1%,1 quality,"recall 1.0000 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-1%,2 p50_ms,P1 1.188 vs best qualifying baseline B1 1.169 ms,FAIL
-1%,2 p95_ms,P1 1.242 vs best qualifying baseline B1 1.243 ms,PASS
-1%,3 gain captured (p50_ms),"best=B1 1.169, P1 1.188, Oracle 1.169 ms",N/A (no headroom: oracle not faster than the best baseline)
-1%,3 gain captured (p95_ms),"best=B1 1.243, P1 1.242, Oracle 1.243 ms",N/A (no headroom: oracle not faster than the best baseline)
-1%,3 gain captured (mean_ms),"best=B1 1.175, P1 1.184, Oracle 1.175 ms",N/A (no headroom: oracle not faster than the best baseline)
-2%,1 quality,"recall 1.0000 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-2%,2 p50_ms,P1 1.979 vs best qualifying baseline B1 1.967 ms,FAIL
-2%,2 p95_ms,P1 2.066 vs best qualifying baseline B1 2.055 ms,FAIL
-2%,3 gain captured (p50_ms),"best=B1 1.967, P1 1.979, Oracle 1.966 ms",N/A (headroom 0.9 us < 1% of best: ratio not meaningful)
-2%,3 gain captured (p95_ms),"best=B1 2.055, P1 2.066, Oracle 2.055 ms",N/A (no headroom: oracle not faster than the best baseline)
-2%,3 gain captured (mean_ms),"best=B1 1.970, P1 1.977, Oracle 1.967 ms",N/A (headroom 3.5 us < 1% of best: ratio not meaningful)
-5%,1 quality,"recall 0.9789 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-5%,2 p50_ms,P1 2.702 vs best qualifying baseline B2-iter 2.622 ms,FAIL
-5%,2 p95_ms,P1 5.575 vs best qualifying baseline B1 4.314 ms,FAIL
-5%,3 gain captured (p50_ms),"best=B2-iter 2.622, P1 2.702, Oracle 2.622 ms",N/A (no headroom: oracle not faster than the best baseline)
-5%,3 gain captured (p95_ms),"best=B1 4.314, P1 5.575, Oracle 4.154 ms",-790.7%
-5%,3 gain captured (mean_ms),"best=B2-iter 2.993, P1 3.021, Oracle 2.735 ms",-10.7%
-10%,1 quality,"recall 0.9778 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-10%,2 p50_ms,P1 1.785 vs best qualifying baseline B2-iter 1.834 ms,PASS
-10%,2 p95_ms,P1 3.994 vs best qualifying baseline B2-iter 3.730 ms,FAIL
-10%,3 gain captured (p50_ms),"best=B2-iter 1.834, P1 1.785, Oracle 1.834 ms",N/A (no headroom: oracle not faster than the best baseline)
-10%,3 gain captured (p95_ms),"best=B2-iter 3.730, P1 3.994, Oracle 3.730 ms",N/A (no headroom: oracle not faster than the best baseline)
-10%,3 gain captured (mean_ms),"best=B2-iter 2.039, P1 2.063, Oracle 2.039 ms",N/A (no headroom: oracle not faster than the best baseline)
-25%,1 quality,"recall 0.9856 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-25%,2 p50_ms,P1 1.434 vs best qualifying baseline B2-iter 1.401 ms,FAIL
-25%,2 p95_ms,P1 1.987 vs best qualifying baseline B2-iter 1.854 ms,FAIL
-25%,3 gain captured (p50_ms),"best=B2-iter 1.401, P1 1.434, Oracle 1.401 ms",N/A (no headroom: oracle not faster than the best baseline)
-25%,3 gain captured (p95_ms),"best=B2-iter 1.854, P1 1.987, Oracle 1.854 ms",N/A (no headroom: oracle not faster than the best baseline)
-25%,3 gain captured (mean_ms),"best=B2-iter 1.405, P1 1.424, Oracle 1.405 ms",N/A (no headroom: oracle not faster than the best baseline)
-50%,1 quality,"recall 0.9844 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-50%,2 p50_ms,P1 1.399 vs best qualifying baseline B2-iter 1.376 ms,FAIL
-50%,2 p95_ms,P1 1.860 vs best qualifying baseline B3 1.842 ms,FAIL
-50%,3 gain captured (p50_ms),"best=B2-iter 1.376, P1 1.399, Oracle 1.376 ms",N/A (no headroom: oracle not faster than the best baseline)
-50%,3 gain captured (p95_ms),"best=B3 1.842, P1 1.860, Oracle 1.954 ms",N/A (no headroom: oracle not faster than the best baseline)
-50%,3 gain captured (mean_ms),"best=B2-iter 1.369, P1 1.381, Oracle 1.369 ms",N/A (no headroom: oracle not faster than the best baseline)
-90%,1 quality,"recall 0.9889 (>= 0.95), completeness 1.0000 (>= 0.99)",PASS
-90%,2 p50_ms,P1 1.392 vs best qualifying baseline B2-plain 1.377 ms,FAIL
-90%,2 p95_ms,P1 1.871 vs best qualifying baseline B2-plain 1.823 ms,FAIL
-90%,3 gain captured (p50_ms),"best=B2-plain 1.377, P1 1.392, Oracle 1.397 ms",N/A (no headroom: oracle not faster than the best baseline)
-90%,3 gain captured (p95_ms),"best=B2-plain 1.823, P1 1.871, Oracle 1.873 ms",N/A (no headroom: oracle not faster than the best baseline)
-90%,3 gain captured (mean_ms),"best=B2-iter 1.368, P1 1.372, Oracle 1.368 ms",N/A (no headroom: oracle not faster than the best baseline)
+scope,criterion,result,detail
+overall,quality,PASS,Recall@10=0.9905; completeness=1.0000
+overall,p50_ms,PASS,P1 2.500 ms vs B2-iter 4.569 ms
+overall,oracle gain (p50_ms),100.2%,
+overall,p95_ms,PASS,P1 5.327 ms vs B1 26.281 ms
+overall,oracle gain (p95_ms),99.9%,
+overall,oracle gain (mean_ms),99.5%,
+0.1%,quality,PASS,Recall@10=1.0000; completeness=1.0000
+0.1%,p50_ms,FAIL,P1 1.220 ms vs B1 1.210 ms
+0.1%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+0.1%,p95_ms,FAIL,P1 1.466 ms vs B3 1.420 ms
+0.1%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+0.1%,oracle gain (mean_ms),N/A,no headroom: oracle not faster than the best baseline
+0.5%,quality,PASS,Recall@10=1.0000; completeness=1.0000
+0.5%,p50_ms,FAIL,P1 1.730 ms vs B3 1.707 ms
+0.5%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+0.5%,p95_ms,FAIL,P1 1.993 ms vs B1 1.962 ms
+0.5%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+0.5%,oracle gain (mean_ms),N/A,no headroom: oracle not faster than the best baseline
+1%,quality,PASS,Recall@10=1.0000; completeness=1.0000
+1%,p50_ms,FAIL,P1 2.321 ms vs B3 2.314 ms
+1%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+1%,p95_ms,PASS,P1 2.565 ms vs B1 2.606 ms
+1%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+1%,oracle gain (mean_ms),N/A,no headroom: oracle not faster than the best baseline
+2%,quality,PASS,Recall@10=1.0000; completeness=1.0000
+2%,p50_ms,PASS,P1 3.442 ms vs B1 3.460 ms
+2%,oracle gain (p50_ms),N/A,headroom 10.6 us < 1% of best: ratio not meaningful
+2%,p95_ms,FAIL,P1 3.796 ms vs B1 3.770 ms
+2%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+2%,oracle gain (mean_ms),N/A,headroom 9.6 us < 1% of best: ratio not meaningful
+5%,quality,PASS,Recall@10=0.9778; completeness=1.0000
+5%,p50_ms,FAIL,P1 4.543 ms vs B2-iter 4.505 ms
+5%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+5%,p95_ms,FAIL,P1 8.161 ms vs B1 7.003 ms
+5%,oracle gain (p95_ms),-442.3%,
+5%,oracle gain (mean_ms),0.1%,
+10%,quality,PASS,Recall@10=0.9789; completeness=1.0000
+10%,p50_ms,FAIL,P1 3.334 ms vs B2-iter 3.272 ms
+10%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+10%,p95_ms,FAIL,P1 5.796 ms vs B2-iter 5.768 ms
+10%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+10%,oracle gain (mean_ms),N/A,headroom 0.0 us < 1% of best: ratio not meaningful
+25%,quality,PASS,Recall@10=0.9867; completeness=1.0000
+25%,p50_ms,PASS,P1 2.581 ms vs B2-iter 2.627 ms
+25%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+25%,p95_ms,PASS,P1 3.380 ms vs B2-iter 3.388 ms
+25%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+25%,oracle gain (mean_ms),N/A,no headroom: oracle not faster than the best baseline
+50%,quality,PASS,Recall@10=0.9833; completeness=1.0000
+50%,p50_ms,FAIL,P1 2.602 ms vs B3 2.454 ms
+50%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+50%,p95_ms,FAIL,P1 3.257 ms vs B3 3.057 ms
+50%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+50%,oracle gain (mean_ms),N/A,no headroom: oracle not faster than the best baseline
+90%,quality,PASS,Recall@10=0.9878; completeness=1.0000
+90%,p50_ms,FAIL,P1 2.526 ms vs B3 2.467 ms
+90%,oracle gain (p50_ms),N/A,no headroom: oracle not faster than the best baseline
+90%,p95_ms,FAIL,P1 3.295 ms vs B3 3.122 ms
+90%,oracle gain (p95_ms),N/A,no headroom: oracle not faster than the best baseline
+90%,oracle gain (mean_ms),N/A,no headroom: oracle not faster than the best baseline

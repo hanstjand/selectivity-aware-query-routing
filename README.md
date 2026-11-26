@@ -1,169 +1,123 @@
-# Selectivity-Aware Query Routing
+# Selectivity-Aware Query Routing for Filtered Vector Search
 
-A final-project implementation of Group 13's proposal: choose exact search or iterative HNSW for
-each filtered vector query in PostgreSQL. The router estimates matching rows from cached `pg_stats`:
+Course project for Advanced Database Systems (NTUST). For each filtered top-10 vector query in PostgreSQL +
+pgvector, a router (P1) chooses between exact search and iterative HNSW search. It estimates the number of
+matching rows from cached `pg_stats` histograms, with no per-query `COUNT(*)`:
 
 ```python
 estimated_rows = estimate_rows(stats, lo, hi)
 method = "B1" if estimated_rows <= threshold else "B2-iter"
 ```
 
-## Run
+The threshold is calibrated on 70% of the query vectors and evaluated once on the held-out 30%.
 
-Requirements: Docker Desktop running with at least 4 GB RAM, `uv`, and internet access for the first
-dataset download. Run these commands from this repository:
+## Repository contents
 
-```powershell
-uv sync
-docker compose up -d --wait
+| Path | Contents |
+|---|---|
+| `src/fvsroute/` | Implementation (seven modules, see below) |
+| `configs/full.yaml` | The experiment: 100K vectors, 300 query vectors × 9 selectivities |
+| `configs/smoke.yaml` | Small development run on a 5,000-row prefix |
+| `sql/`, `docker-compose.yml` | Table schema, indexes, PostgreSQL 17 + pgvector 0.8.7 container |
+| `results/full/` | Measured results reported in the paper: `report.md`, tables, figures, raw per-query summaries |
+| `report/` | IEEE conference paper (`main.pdf`) and its LaTeX source |
+| `docs/METHODOLOGY.md` | Every method, metric and decision |
+| `tests/` | Unit tests, saved-result regression tests, database integration tests |
 
-# Small trial: 5,000 stored vectors, 20 query vectors
-uv run python main.py --config configs/smoke.yaml
+## Methods
 
-# Proposal experiment: 100,000 stored vectors, 300 query vectors
-uv run python main.py
-```
+| Method | What it runs |
+|---|---|
+| B1 Exact | Filter (B-tree bitmap scan or sequential scan), then exact distance ranking; HNSW disabled |
+| B2-plain | Forced HNSW scan, post-filter, iterative scan off |
+| B2-iter | Forced HNSW scan with `hnsw.iterative_scan = relaxed_order` |
+| B3 Planner | PostgreSQL's own plan choice |
+| **P1 Router** | Estimated rows ≤ T → B1, otherwise B2-iter |
+| Oracle | Faster of B1 and B2-iter per query, in hindsight (latency floor, not deployable) |
 
-The full run writes `results/proposal/report.md`, tables, and six figures, including the calibration
-curve in PNG and PDF formats. The smoke run writes
-`results/smoke/`. Fresh runs measure the current machine; timings and the calibrated threshold can vary.
+All HNSW sessions share `m=16`, `ef_construction=64`, `ef_search=100`, `max_scan_tuples=20000`. Only T is
+calibrated.
 
-To show the required results from the historical experiment without running new queries:
+## Results (held-out split, 810 configurations)
 
-```powershell
-uv run python main.py report --from-run full --run-id proposal-preview
-```
+| Method | p50 (ms) | p95 (ms) | Recall@10 | Complete | Meets quality |
+|---|---|---|---|---|---|
+| B1 | 6.579 | 26.281 | 1.000 | 100.0% | yes |
+| B2-plain | 2.517 | 3.130 | 0.509 | 39.5% | no |
+| B2-iter | 4.569 | 35.489 | 0.968 | 99.6% | yes |
+| B3 | 2.317 | 3.096 | 0.828 | 72.8% | no |
+| **P1** | **2.500** | **5.327** | **0.990** | **100.0%** | **yes** |
+| Oracle | 2.504 | 5.317 | 0.991 | 100.0% | – |
 
-This reads the committed measurements in `results/full/` and writes a shorter report to
-`results/proposal-preview/report.md`. It does **not** perform a new benchmark. Required numerical
-results are preserved; the historical router name `P1` is displayed as `B4`, as in the proposal.
-The original measurements and paper under `results/full/` and `report/` remain historical artifacts.
+P1 meets the quality targets (Recall@10 ≥ 0.95, ≥ 99% complete) and is faster than the best qualifying fixed
+method at both p50 and p95. Per-level results, including the levels where P1 loses, are in
+[`results/full/report.md`](results/full/report.md).
 
-## Read the code
-
-There are seven implementation files under `src/fvsroute/`:
+## Code
 
 | File | What to look for |
 |---|---|
 | `main.py` | Step order and command-line arguments |
 | `config.py` | YAML settings and paths |
-| `data.py` | Dataset reading, seeded filters, exact NumPy answers |
+| `data.py` | Dataset reading, seeded filters, exact NumPy ground truth |
 | `prepare.py` | Load data, create indexes, verify correctness |
-| `search.py` | Baseline SQL, histogram estimator, B4 routing rule |
+| `search.py` | Method SQL and settings, histogram estimator, P1 routing rule |
 | `benchmark.py` | Timing loop, metrics, calibration, Oracle |
-| `report.py` | Required tables and plots |
+| `report.py` | Tables, success criteria and figures |
 
 The main path is `main.py → prepare.py → benchmark.py → report.py`.
-There is no session-pool framework or plugin system. Search methods use ordinary connections and cursors.
 
-## Proposal scope
+## Run
 
-- PostgreSQL + pgvector, 100K LAION/CLIP vectors, 512 dimensions, cosine distance, k = 10.
-- 300 query vectors × nine selectivities: 0.1%, 0.5%, 1%, 2%, 5%, 10%, 25%, 50%, 90%.
-- Split by query vector: 70% calibration, 30% held-out test.
-- B1 exact, B2 plain HNSW, B2 iterative HNSW, B3 PostgreSQL planner, B4 router, and hindsight Oracle.
-- Cached histogram estimates; no per-query `COUNT(*)` in the router.
-- One warm-up pass and five timed repetitions in randomized order for the full experiment.
-- Frozen threshold, EXPLAIN checks, logged software versions and query costs.
-- p50/p95 latency, Recall@10, completeness, row-estimate error, and Oracle gain, overall and per level.
-- Report negative results as well as successes.
+Requirements: Docker with at least 4 GB RAM, [`uv`](https://docs.astral.sh/uv/), and internet access for the
+first dataset download (Qdrant's public `laion-small-clip`, checked by SHA-256).
 
-HNSW sensitivity variants, B3+iter, Oracle-V, bootstrap analysis, and automatic `ef_search` adjustment
-are not part of this implementation. HNSW settings are fixed in the YAML.
-
-B1 retains the original exact baseline: the planner may use a B-tree bitmap scan or a sequential scan,
-but cannot use HNSW. This preserves comparability with the historical experiment. See
-[methodology](docs/METHODOLOGY.md) for the details and the proposal's simplified B-tree description.
-
-## Individual steps
-
-The existing `fvs` command also works:
-
-```powershell
-uv run fvs download --config configs/full.yaml
-uv run fvs prepare --config configs/full.yaml
-uv run fvs db-setup --config configs/full.yaml
-uv run fvs verify --config configs/full.yaml
-uv run fvs bench --config configs/full.yaml --phase calibration
-uv run fvs calibrate --config configs/full.yaml
-uv run fvs bench --config configs/full.yaml --phase test
-uv run fvs report --config configs/full.yaml
-```
-
-`uv run fvs all --config configs/full.yaml` runs all of them. A completed benchmark phase is not
-overwritten. For another experiment, use the same new `--run-id <name>` for every step, or pass it to
-`all`. A run ID separates output files; `db-setup` still recreates the configured database table.
-Do not run multiple experiments or tests while timing queries.
-
-### Run it again in Windows PowerShell
-
-Open Docker Desktop and wait until its engine is running. Open PowerShell in this repository, then
-prepare the environment and choose a fresh output name:
-
-```powershell
+```bash
 uv sync
 docker compose up -d --wait
-docker compose ps
-$runId = "full-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+
+# Small trial: 5,000 stored vectors, 20 query vectors (writes results/smoke/)
+uv run python main.py --config configs/smoke.yaml
+
+# Full experiment, in a new output folder so results/full/ is kept
+uv run python main.py --config configs/full.yaml --run-id full-rerun
 ```
 
-Run each command below in order. Wait for a command to finish successfully before starting the next.
-Keep the same PowerShell window so `$runId` stays the same for all eight steps:
+The pipeline runs eight steps in order. They can also be run one at a time; use the same `--run-id` for every
+step:
 
-```powershell
-# 1. Download the real dataset, or verify the cached archive's checksum
-uv run python main.py download --config configs/full.yaml --run-id $runId
-# 2. Generate filters, split queries, and compute exact reference answers
-uv run python main.py prepare --config configs/full.yaml --run-id $runId
-# 3. Load 100,000 vectors and build the B-tree and HNSW indexes
-uv run python main.py db-setup --config configs/full.yaml --run-id $runId
-# 4. Check stored data, distances, filters, and exact search
-uv run python main.py verify --config configs/full.yaml --run-id $runId
-# 5. Measure the four baselines on the calibration split
-uv run python main.py bench --config configs/full.yaml --run-id $runId --phase calibration
-# 6. Choose and freeze the routing threshold using calibration data only
-uv run python main.py calibrate --config configs/full.yaml --run-id $runId
-# 7. Measure the baselines and B4 on the held-out test split
-uv run python main.py bench --config configs/full.yaml --run-id $runId --phase test
-# 8. Generate the report, tables, and figures from those fresh measurements
-uv run python main.py report --config configs/full.yaml --run-id $runId
+```bash
+uv run python main.py download  --run-id full-rerun   # download or verify the dataset
+uv run python main.py prepare   --run-id full-rerun   # filters, split, exact ground truth
+uv run python main.py db-setup  --run-id full-rerun   # load 100K vectors, build B-tree and HNSW
+uv run python main.py verify    --run-id full-rerun   # check data, distances, filters, exact search
+uv run python main.py bench     --run-id full-rerun --phase calibration
+uv run python main.py calibrate --run-id full-rerun   # choose and freeze T on calibration data only
+uv run python main.py bench     --run-id full-rerun --phase test
+uv run python main.py report    --run-id full-rerun
 ```
 
-To run all eight steps automatically, choose a new `$runId` and use:
+`uv run fvs <step>` is equivalent to `uv run python main.py <step>`. A finished benchmark phase is never
+overwritten. `db-setup` always recreates the `items` table, so run one experiment at a time and do not run
+anything else while queries are being timed. Timings and the calibrated threshold depend on the machine, so a
+rerun will not reproduce `results/full/` exactly.
 
-```powershell
-uv run python main.py --config configs/full.yaml --run-id $runId
+To regenerate `results/full/report.md`, its tables and figures from the committed measurements (no database
+needed):
+
+```bash
+uv run python main.py report
 ```
-
-For a small trial, use `configs/smoke.yaml` in the automatic command and a new output name, for example
-`--run-id "smoke-$(Get-Date -Format 'yyyyMMdd-HHmmss')"`. Smoke timings do not validate the 100K experiment.
-
-Open `results/<your-run-id>/report.md`. In `tables/success_criteria.csv`, check `scope=overall` for
-quality, p50, and p95 PASS/FAIL results; then inspect each selectivity level for weaknesses.
-`tables/summary_test_overall.csv` has the six method rows, and `calibration/frozen_router.json` has
-the threshold. A new benchmark can have different timings and a different threshold from the paper.
-
-If a command fails, inspect `results/<your-run-id>/logs/` and resolve the reported error before
-continuing. A completed benchmark phase refuses to overwrite its measurements. Report generation
-can be repeated after the test phase finishes. Database setup recreates `items` in the configured
-database even when you choose a new run ID, so finish one experiment before starting another.
 
 ## Tests
 
-```powershell
-uv run pytest -m "not db"
-
-# After the smoke pipeline has completed:
-uv run pytest
+```bash
+uv run pytest -m "not db"   # no database needed
+uv run pytest               # after the smoke pipeline has completed
 ```
 
-Tests cover data integrity, ground truth, estimates, routing boundaries, SQL plans, calibration,
-retrieval metrics, pipeline order, and a real database smoke run. Saved-result tests reproduce the
-historical threshold, all 810 test routes, and required summary values. Tests for removed supplementary
-features have been removed with those features.
+Tests cover data integrity, ground truth, estimates, routing boundaries, SQL plans, calibration, metrics,
+pipeline order, and a real database smoke run. The saved-result tests check that the committed measurements in
+`results/full/` reproduce the frozen threshold, all 810 held-out routing decisions, and every reported table.
 
-To stop PostgreSQL:
-
-```powershell
-docker compose stop
-```
+To stop PostgreSQL: `docker compose stop`.

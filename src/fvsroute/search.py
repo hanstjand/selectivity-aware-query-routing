@@ -1,4 +1,4 @@
-"""The four baselines, cached row estimates, and the B4 routing rule."""
+"""The four baselines, cached row estimates, and the P1 routing rule."""
 
 import bisect
 import hashlib

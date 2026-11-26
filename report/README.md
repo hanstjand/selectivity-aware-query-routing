@@ -1,8 +1,5 @@
 # IEEE Conference Report
 
-This is the archived paper for the original `results/full/` experiment. The simplified proposal-only
-implementation generates its current report under `results/proposal/`; it does not rewrite this paper.
-
 `main.pdf` is the final report, *Selectivity-Aware Query Routing for Filtered Vector Search*. It is an 8-page IEEE
 conference paper (`IEEEtran`, conference mode) built from the measured results in `../results/full/`.
 
@@ -47,5 +44,5 @@ Inputs: `results/full/tables/summary_test_by_level.csv`, `results/full/verify/es
 
 Every number in the paper comes from files under `results/full/` (mainly `report.md`, `tables/*.csv`,
 `calibration/frozen_router.json`, `verify/consistency.json`, `env/*.json`) and from
-`data/processed/full/manifest.json`. All references were checked against Crossref DOI records, the publishers'
+`data/processed/full/` (produced by `fvs prepare`). All references were checked against Crossref DOI records, the publishers'
 proceedings pages, arXiv, or the live documentation URLs on 2026-11-07.
