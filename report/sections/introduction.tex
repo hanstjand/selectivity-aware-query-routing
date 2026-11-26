@@ -1,13 +1,12 @@
 \section{Introduction}
 \label{sec:intro}
 
-Dense vector embeddings are a standard representation for semantic retrieval; retrieval-augmented generation, for
-example, retrieves the passages closest to a query embedding and passes them to a language model~\cite{lewis2020rag}.
-Exact nearest-neighbor search is expensive at scale, so practical systems use approximate nearest-neighbor (ANN)
-indexes such as Hierarchical Navigable Small World (HNSW) graphs~\cite{malkov2020hnsw}. These indexes increasingly
-live inside general database systems: pgvector adds vector types, distance operators and HNSW indexes to
-PostgreSQL~\cite{pgvector}, and Milvus, AnalyticDB-V and VBase integrate vector search with structured data
-processing~\cite{wang2021milvus,wei2020analyticdbv,zhang2023vbase}.
+Dense vector embeddings are a standard representation for semantic retrieval; retrieval-augmented generation (RAG),
+for example, retrieves the passages closest to a query embedding and passes them to a language model. Exact
+nearest-neighbor search is expensive at scale, so practical systems use approximate nearest-neighbor (ANN) indexes
+such as Hierarchical Navigable Small World (HNSW) graphs~\cite{malkov2020hnsw}. These indexes increasingly live inside
+general database systems; pgvector, for example, adds vector types, distance operators and HNSW indexes to
+PostgreSQL~\cite{pgvector}.
 
 Real retrieval requests usually restrict candidates by metadata such as a date range, category or access attribute.
 Such a \emph{filtered top-$k$ query} (\code{WHERE attr BETWEEN lo AND hi ORDER BY embedding <=> q LIMIT k}) can be
@@ -23,8 +22,8 @@ When very few rows qualify, such a scan must visit a large part of the graph.
 The better strategy therefore depends on \emph{filter selectivity}, the fraction of rows that satisfy the predicate.
 Recent studies confirm that no single filtered-ANN strategy dominates across selectivities, and report that pgvector's
 optimizer sometimes chooses an approximate index scan where an exact plan would give perfect recall at similar
-latency~\cite{li2025attribute,amanbayev2026filtered}. A classical cost model~\cite{selinger1979access} compares plans
-by estimated cost only and has no notion of an index scan that may return an \emph{incomplete} answer.
+latency~\cite{li2025attribute,amanbayev2026filtered}. A classical cost-based optimizer compares plans by estimated
+cost only and has no notion of an index scan that may return an \emph{incomplete} answer.
 
 We therefore ask whether a lightweight \emph{external} routing rule can outperform both fixed strategies and
 PostgreSQL's default plan choice while guaranteeing retrieval quality on average. The rule uses only the database's
@@ -44,5 +43,5 @@ controlled benchmark of 2{,}700 filtered queries on 100{,}000 public LAION/CLIP 
 every strategy, ground truth validated against the benchmark's own identifiers, and a held-out evaluation; and
 (iii) an analysis, including negative results, of where routing helps, where the default planner returns incomplete
 results, and where a single threshold reaches its limits. Code, configuration and all measured results are
-public~\cite{repo}. Sections~\ref{sec:related}--\ref{sec:conclusion} cover related work, the method, the setup, the
+available at \url{https://github.com/hanstjand/selectivity-aware-query-routing}. Sections~\ref{sec:related}--\ref{sec:conclusion} cover related work, the method, the setup, the
 results, a discussion with limitations, and the conclusion.

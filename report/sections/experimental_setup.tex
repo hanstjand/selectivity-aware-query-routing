@@ -3,7 +3,7 @@
 
 \subsection{Dataset and Query Workload}
 We use the \code{laion-small-clip} collection of Qdrant's public filtered-ANN benchmark~\cite{qdrant-datasets}:
-100{,}000 CLIP~\cite{radford2021clip} image embeddings sampled from LAION-400M~\cite{schuhmann2021laion}, with 512
+100{,}000 CLIP image embeddings sampled from LAION-400M, with 512
 dimensions and approximately unit norm. They are distributed as float16; we store them losslessly as float32, use
 cosine distance, and keep the original row index as identifier. The filter attribute is the payload field
 \code{similarity}, the CLIP image--text score of each sample, with 97{,}798 distinct values in $[0.295,0.501]$. 152
