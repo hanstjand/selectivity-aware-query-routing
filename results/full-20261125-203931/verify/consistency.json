@@ -1,9 +1,0 @@
-{
-  "eligible_count_errors": 0,
-  "unexplained_exact_errors": 0,
-  "exact_near_ties": 2,
-  "rows": 100000,
-  "predicate_mismatches": 0,
-  "max_cosine_difference": 2.961057218309193e-07,
-  "all_pass": true
-}

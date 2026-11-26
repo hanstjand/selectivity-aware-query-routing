@@ -45,7 +45,7 @@ def test_full_pipeline_smoke(tmp_path, smoke_cfg):
     assert json.loads((run / "verify/consistency.json").read_text())["all_pass"]
     s = pd.read_csv(run / "tables/summary_test_overall.csv").set_index("method")
     assert s.loc["B1", "recall"] == 1.0 and s.loc["B1", "completeness"] == 1.0
-    assert {"B1", "B2-plain", "B2-iter", "B3", "B4", "Oracle"} <= set(s.index)
+    assert {"B1", "B2-plain", "B2-iter", "B3", "P1", "Oracle"} <= set(s.index)
     # frozen threshold precedes the held-out measurements
     frozen = json.loads((run / "calibration/frozen_router.json").read_text())
     raw = pd.read_parquet(run / "test/raw.parquet", columns=["ts_ns"])

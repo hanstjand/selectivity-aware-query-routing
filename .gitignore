@@ -10,7 +10,6 @@ results/*/calibration/raw.parquet
 results/*/test/raw.parquet
 results/*/*/plans.parquet
 results/smoke/
-results/proposal-preview/
 results/pytest-*/
 # Local comparison copies, trial runs, logs, and test scratch files
 results/compare-*/

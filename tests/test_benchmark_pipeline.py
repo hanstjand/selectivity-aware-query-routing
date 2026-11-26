@@ -118,7 +118,7 @@ def test_calibration_and_held_out_timing_produce_required_results(experiment):
         scored = pd.read_parquet(cfg.run_dir / phase / "per_config.parquet")
         assert (scored["recall"] == 1.0).all()
         assert (scored["complete"] == 1.0).all()
-    router = raw[raw["method"] == "B4"]
+    router = raw[raw["method"] == "P1"]
     assert (router["overhead_ns"] > 0).all()
     assert (router["overhead_ns"] <= router["latency_ns"]).all()
     frozen = json.loads((cfg.run_dir / "calibration/frozen_router.json").read_text())

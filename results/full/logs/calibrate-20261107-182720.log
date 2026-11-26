@@ -1,2 +1,0 @@
-18:27:22 INFO fvsroute.pipeline: frozen T* = 4695.816156311217 (ef_search=100, guard triggered=False); calibration mean 1.437 ms, recall 0.9942, completeness 1.0000, frac B1 0.45
-18:27:22 INFO fvs: step calibrate finished in 1.4s

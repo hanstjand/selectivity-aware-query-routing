@@ -1,5 +1,5 @@
 # Primary experiment: 100K LAION/CLIP vectors, 300 query vectors x 9 selectivities = 2,700 configs.
-run_id: proposal
+run_id: full
 seed: 20261107
 
 dataset:

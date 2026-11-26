@@ -1,82 +1,66 @@
 \section{Proposed Method}
 \label{sec:method}
 
-\subsection{Problem Formulation}
-Let $\mathcal{D}=\{(i,\mathbf{x}_i,a_i)\}_{i=1}^{N}$ be a table with identifier $i$, embedding
-$\mathbf{x}_i\in\mathbb{R}^{d}$ and numeric attribute $a_i$. A filtered top-$k$ query consists of a query vector
-$\mathbf{q}\in\mathbb{R}^{d}$, a closed range $[\ell,u]$ and a result size $k$. The eligible set and the cosine distance
-of pgvector's \code{<=>} operator are
-\begin{align}
-E(\ell,u) &= \{\, i : \ell \le a_i \le u \,\}, \label{eq:eligible}\\
-\delta(\mathbf{x},\mathbf{q}) &= 1-\mathbf{x}^{\top}\mathbf{q}\,/\,(\lVert\mathbf{x}\rVert\,\lVert\mathbf{q}\rVert). \label{eq:cos}
-\end{align}
-The exact answer $G_k(\mathbf{q},\ell,u)$ consists of the $\min(k,|E|)$ eligible rows with the smallest distance,
-ordered by $(\delta(\mathbf{x}_i,\mathbf{q}),i)$ so that ties are broken deterministically. The \emph{selectivity} is
-$\sel=|E|/N$. Every strategy returns $R\subseteq E$ with $|R|\le k$. An exact strategy returns $G_k$; an approximate
-one may return other rows or fewer than $\min(k,|E|)$ rows.
+\subsection{Problem and Search Strategies}
+A table holds rows $(i,\mathbf{x}_i,a_i)$ with identifier $i$, embedding $\mathbf{x}_i\in\mathbb{R}^{d}$ and numeric
+attribute $a_i$. A query consists of a vector $\mathbf{q}$, a range $[\ell,u]$ and $k$. With the eligible set
+$E=\{i:\ell\le a_i\le u\}$ and pgvector's cosine distance
+\begin{equation}
+\delta(\mathbf{x},\mathbf{q})=1-\mathbf{x}^{\top}\mathbf{q}\,/\,(\lVert\mathbf{x}\rVert\,\lVert\mathbf{q}\rVert),
+\label{eq:cos}
+\end{equation}
+the exact answer $G_k$ is the $\min(k,|E|)$ eligible rows with the smallest distance (ties broken by $i$); the
+selectivity is $\sel=|E|/N$.
 
-\subsection{Search Strategies}
-All strategies issue \code{SELECT id FROM items WHERE} \emph{predicate} \code{ORDER BY embedding <=> q LIMIT 10} on a
-dedicated session whose settings stay fixed for the whole run (Table~\ref{tab:strategies}). They differ only in the
-predicate text and session-level planner settings. This separates the SQL \emph{execution strategy} from the
-\emph{routing logic} that chooses one.
+Every strategy issues \code{SELECT id FROM items WHERE} \emph{predicate} \code{ORDER BY embedding <=> q LIMIT 10} on
+its own session with fixed settings (Table~\ref{tab:strategies}). B1 sets \code{enable\_indexscan=off}, pgvector's
+documented way to obtain exact results~\cite{pgvector}: HNSW is reachable only through an index scan, so the planner
+filters through the B-tree or a sequential scan and sorts every eligible row by distance. At low selectivity a B-tree
+plan is cheaper, so plain SQL cannot force HNSW. B2 therefore writes the predicate as $(a+0.0)$ \code{BETWEEN} $\ell$
+\code{AND} $u$, which the B-tree cannot serve, and disables sequential scans. Because $x+0.0=x$ for every finite
+double, the result is unchanged. B2-iter differs from B2-plain only in iterative scanning, which continues until $k$
+rows qualify or \code{max\_scan\_tuples} is reached, so it is not guaranteed to be complete. B3 runs the unmodified
+query and measures PostgreSQL's own choice.
 
 \begin{table}[t]
-\caption{Execution strategies and the plans verified by \code{EXPLAIN}}
+\caption{Search strategies and the plans verified by \code{EXPLAIN}}
 \label{tab:strategies}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}l>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{3.65cm}@{}}
 \toprule
-Method & Predicate; session & Plan observed (held-out run)\\
+Method & Predicate; session & Plan verified by \code{EXPLAIN}\\
 \midrule
-B1 & $a\in[\ell,u]$; index scans disabled & B-tree bitmap scan + sort ($\sel\le25\%$); parallel sequential scan + sort ($\sel\ge50\%$)\\
-B2-plain & $(a+0.0)\in[\ell,u]$; seq.\ scans disabled & HNSW index scan + filter (all levels)\\
-B2-iter & as B2-plain; iterative scan (\code{relaxed\_order}) & HNSW iterative scan + filter (all levels)\\
-B3 & $a\in[\ell,u]$; PostgreSQL defaults & B-tree for $\sel\le1\%$; non-iterative HNSW for $\sel\ge2\%$\\
+B1 & $a\in[\ell,u]$; index scans off & B-tree bitmap or (parallel) sequential scan + sort; never HNSW\\
+B2-plain & $(a+0.0)\in[\ell,u]$; seq.\ scans off & HNSW index scan + filter\\
+B2-iter & as B2-plain; \code{relaxed\_order} & HNSW iterative scan + filter\\
+B3 & $a\in[\ell,u]$; defaults & B-tree for $\sel\le1\%$; HNSW for $\sel\ge2\%$\\
 P1 & B1 or B2-iter by Eq.~\eqref{eq:route} & plan of the chosen arm\\
 \bottomrule
-\multicolumn{3}{@{}p{\columnwidth}@{}}{\scriptsize All HNSW-using sessions share \code{ef\_search=100} and
-\code{max\_scan\_tuples=20000}. B3+iter (supplementary) is B3 with iterative scanning enabled.}
+\multicolumn{3}{@{}p{\columnwidth}@{}}{\scriptsize All HNSW sessions share \code{ef\_search=100} and
+\code{max\_scan\_tuples=20000}.}
 \end{tabular}
 \end{table}
 
-\textbf{B1 (exact).} The session sets \code{enable\_indexscan=off}, pgvector's documented way to obtain exact
-results~\cite{pgvector}. HNSW is only reachable through an index scan, so it is unusable; the planner still chooses a
-B-tree bitmap scan or a (parallel) sequential scan for the predicate and computes every eligible distance before a
-top-$k$ sort.
-\textbf{B2 (HNSW).} At low selectivity a B-tree plan is cheaper, so plain SQL cannot force HNSW. B2 rewrites the
-predicate as $(a+0.0)$ \code{BETWEEN} $\ell$ \code{AND} $u$, which cannot use the B-tree, and sets
-\code{enable\_seqscan=off}, leaving the HNSW scan as the only access path. The rewrite is semantically neutral: for
-every finite IEEE~754 double $x$, $x+0.0=x$, and we verify this on all stored values. B2-plain returns at most
-\code{ef\_search} candidates before filtering. B2-iter continues traversal until $k$ qualifying rows are found or
-\code{max\_scan\_tuples} tuples have been visited, so it is not guaranteed to be complete or exact.
-\textbf{B3 (default planner).} B3 runs the unmodified query with default planner settings, the shared HNSW runtime
-configuration and iterative scanning at its default (off); it measures the plan PostgreSQL itself selects.
-\textbf{P1 (router)} adds no execution strategy; it chooses B1 or B2-iter per query.
-
 \subsection{Selectivity Estimation}
-P1 needs the number of matching rows \emph{before} execution. A \code{COUNT(*)} would cost a scan proportional to
-$|E|$, the very cost the router tries to avoid, plus a round trip. P1 instead reuses what PostgreSQL's \code{ANALYZE}
-stores in \code{pg\_stats}: the null fraction $f_{\mathrm{null}}$, the MCVs $V$ with frequencies $f_v$, the $B+1$
-equi-depth histogram bounds $b_0<\dots<b_B$, and the table cardinality $\hat{N}$ (\code{reltuples}). Mirroring
+A \code{COUNT(*)} would cost a scan proportional to $|E|$, the very cost the router tries to avoid. P1 instead reads
+PostgreSQL's \code{pg\_stats} once after \code{ANALYZE}: the null fraction $f_{\mathrm{null}}$, the most common values
+$V$ with frequencies $f_v$, the equi-depth histogram bounds $b_0<\dots<b_B$, and the row count $\hat{N}$. Mirroring
 PostgreSQL's range estimator~\cite{pgdocs-rowest},
 \begin{equation}
 \hat{P}(a\le c)=\sum_{v\in V,\,v\le c} f_v+\Bigl(1-f_{\mathrm{null}}-\sum_{v\in V} f_v\Bigr)H(c),
 \label{eq:cdf}
 \end{equation}
-where $H(c)=\frac{1}{B}\bigl(j+\frac{c-b_j}{b_{j+1}-b_j}\bigr)$ for $b_j\le c<b_{j+1}$ is the histogram fraction below
-$c$ ($0$ below $b_0$, $1$ above $b_B$). The estimated matching-row count is
+where $H(c)=\frac{1}{B}\bigl(j+\frac{c-b_j}{b_{j+1}-b_j}\bigr)$ for $b_j\le c<b_{j+1}$ interpolates inside a bucket.
+The estimated number of matching rows is
 \begin{equation}
 \Mhat(\ell,u)=\hat{N}\,\bigl(\hat{P}(a\le u)-\hat{P}(a<\ell)\bigr).
 \label{eq:est}
 \end{equation}
-The statistics are read once after \code{ANALYZE} (two catalog queries), cached and hashed. An estimate is then a few
-binary searches in the client, with no SQL per query. The table is static, so the cache needs no invalidation; a hash
-check before and after every benchmark phase aborts the run if the statistics change.
+An estimate is a few binary searches in the client, with no SQL per query.
 
-\subsection{Selectivity-Aware Routing}
+\subsection{Routing and Threshold Calibration}
 Given a frozen threshold $T$, P1 routes each query by
 \begin{equation}
 \pi_T(\mathbf{q},\ell,u)=
@@ -86,11 +70,10 @@ Given a frozen threshold $T$, P1 routes each query by
 \end{cases}
 \label{eq:route}
 \end{equation}
-B1's work grows with $|E|$ but it is always exact. B2-iter's work \emph{shrinks} with $|E|$, because qualifying
-candidates appear early in the traversal, but it becomes expensive and possibly incomplete when few rows qualify. A
-threshold on the estimated cardinality separates the two regimes if the crossover is stable across query vectors.
-Fig.~\ref{fig:arch} shows the architecture. P1 keeps one preconfigured session per arm, so dispatch needs no
-per-query \code{SET}; its latency is measured from before estimation until the last row is fetched.
+B1's work grows with $|E|$, while B2-iter's work shrinks with $|E|$ because qualifying candidates appear early in the
+traversal. A threshold on $\Mhat$ separates the two regimes if their crossover is stable across query vectors.
+Fig.~\ref{fig:arch} shows the architecture; P1's latency is measured from before estimation until the last row is
+fetched.
 
 \begin{figure}[t]
 \centering
@@ -124,36 +107,14 @@ evaluation.}
 \label{fig:arch}
 \end{figure}
 
-\subsection{Threshold Calibration}
-$T$ is chosen offline, not learned. The 300 query vectors are split (seeded) into 210 calibration and 90 test vectors.
-Because the split is by vector, all nine filters of a vector fall on the same side, which prevents leakage. On the
-calibration configurations $\mathcal{C}$, B1 and B2-iter are measured, giving median latency $\lambda_m(c)$, strict
-Recall@10 $r_m(c)$ and completeness $\kappa_m(c)$ (Section~\ref{sec:metrics}). For a candidate $T$, P1 is simulated by
-charging each configuration the measurements of the arm chosen by Eq.~\eqref{eq:route}, plus the measured median
-routing overhead $o$. With $L(T)$, $R(T)$ and $K(T)$ the means over $\mathcal{C}$ of $\lambda_{\pi_T(c)}(c)+o$,
-$r_{\pi_T(c)}(c)$ and $\kappa_{\pi_T(c)}(c)$,
+$T$ is chosen offline. The 300 query vectors are split into 210 calibration and 90 test vectors, so all nine filters
+of a vector fall on the same side. On the calibration configurations, B1 and B2-iter are measured, and P1 is simulated
+for each candidate $T$ by charging every configuration the measurements of the arm Eq.~\eqref{eq:route} selects plus
+the measured routing overhead. With $L(T)$, $R(T)$ and $K(T)$ the resulting mean latency, mean Recall@10 and
+completeness,
 \begin{equation}
-T^{*}=\arg\min_{T\in\mathcal{T}} L(T)\quad\text{s.t.}\quad R(T)\ge0.95,\ \ K(T)\ge0.99,
+T^{*}=\arg\min_{T} L(T)\quad\text{s.t.}\quad R(T)\ge0.95,\ \ K(T)\ge0.99,
 \label{eq:calib}
 \end{equation}
-where $\mathcal{T}$ contains $0$, $\infty$ and the geometric midpoints between consecutive distinct estimates. Ties
-go to the lower p95 latency, then to the larger $T$. $T=\infty$ (always B1) is always feasible. The calibration code
-rejects test-split configurations. $T^{*}$ is stored with hashes of the statistics, the calibration input and the
-configuration, and the held-out run refuses to start if they differ (Algorithm~\ref{alg:p1}). The HNSW configuration
-is fixed in advance, not tuned jointly with $T$.
-
-\begin{algorithm}[t]
-\caption{Calibration (offline) and routing (online) in P1}
-\label{alg:p1}
-\begin{algorithmic}[1]
-\REQUIRE calibration configurations $\mathcal{C}$ with measured $\lambda_m,r_m,\kappa_m$ ($m\in\{$B1, B2-iter$\}$),
-estimates $\Mhat(c)$, overhead $o$
-\STATE $\mathcal{T}\leftarrow\{0,\infty\}\cup\{\sqrt{e_je_{j+1}}\}$ for sorted distinct estimates $e_j$
-\FORALL{$T\in\mathcal{T}$}
-  \STATE route each $c$ by Eq.~\eqref{eq:route}; compute $L(T)$, $R(T)$, $K(T)$
-\ENDFOR
-\STATE $T^{*}\leftarrow\arg\min\{L(T):R(T)\ge0.95,\ K(T)\ge0.99\}$; freeze $T^{*}$
-\STATE \textbf{online}, per query $(\mathbf{q},\ell,u)$: compute $\Mhat$ by Eq.~\eqref{eq:est} from cached statistics
-\STATE \quad \textbf{if} $\Mhat\le T^{*}$ \textbf{then} run B1 \textbf{else} run B2-iter
-\end{algorithmic}
-\end{algorithm}
+over $T=0$, $T=\infty$ and the midpoints between consecutive distinct estimates. $T^{*}$ is frozen before the held-out
+run, and the HNSW settings are fixed in advance rather than tuned with $T$.
